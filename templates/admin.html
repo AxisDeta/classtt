@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Study Scheduler</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .admin-actions {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .table-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--white);
+        }
+
+        .table-toolbar h2 {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 1.05rem;
+        }
+
+        .selection-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .selection-count {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .bulk-delete-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .select-col {
+            width: 44px;
+            text-align: center !important;
+        }
+
+        .row-select,
+        .select-all {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .sessions-table {
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+        }
+        
+        .sessions-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .sessions-table th,
+        .sessions-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .sessions-table th {
+            background: var(--light-bg);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .sessions-table tr:hover {
+            background: var(--light-bg);
+        }
+        
+        .tasks-table {
+            margin-top: 2rem;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            padding: 1rem;
+        }
+
+        .tasks-table h2 {
+            margin: 0 0 1rem 0;
+            color: var(--text-primary);
+        }
+
+        .tasks-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .tasks-table th,
+        .tasks-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tasks-table th {
+            background: var(--light-bg);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .tasks-table tr:hover {
+            background: var(--light-bg);
+        }
+
+        .history-panel {
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            padding: 1rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .history-header h2 {
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .history-controls {
+            display: flex;
+            align-items: end;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .history-controls label {
+            display: grid;
+            gap: 0.35rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .history-controls input {
+            min-height: 40px;
+            padding: 0.55rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: var(--light-bg);
+            color: var(--text-primary);
+        }
+
+        .history-summary {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .history-stat {
+            background: var(--light-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 0.8rem;
+        }
+
+        .history-stat span {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            font-weight: 700;
+            margin-bottom: 0.3rem;
+        }
+
+        .history-stat strong {
+            color: var(--text-primary);
+            font-size: 1.15rem;
+        }
+
+        .history-charts {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .history-chart {
+            background: var(--light-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 1rem;
+            min-width: 0;
+        }
+
+        .history-chart h3 {
+            margin: 0 0 0.75rem 0;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+
+        .history-chart canvas {
+            max-height: 260px;
+        }
+
+        .admin-task-card {
+            background: var(--light-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .admin-task-card h3 {
+            margin-top: 0;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+
+        .admin-task-form {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 1rem;
+            align-items: end;
+        }
+
+        .admin-task-form .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .admin-task-form label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .admin-task-form input,
+        .admin-task-form select {
+            width: 100%;
+            padding: 0.85rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: var(--white);
+        }
+
+        .admin-task-form button {
+            grid-column: span 4;
+            justify-self: end;
+            padding: 0.85rem 1.2rem;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: #fff;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .admin-task-form button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.18);
+        }
+
+        .task-edit-row {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .task-edit-row input,
+        .task-edit-row select {
+            width: 100%;
+            padding: 0.65rem 0.85rem;
+            border: 1px solid rgba(100, 116, 139, 0.25);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            background: var(--white);
+        }
+
+        .task-row-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .task-row-actions .btn-primary,
+        .task-row-actions .btn-secondary {
+            padding: 0.45rem 0.9rem;
+            min-width: 88px;
+        }
+
+        .session-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-edit,
+        .btn-delete {
+            padding: 0.25rem 0.5rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .btn-edit {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-edit:hover {
+            background: var(--primary-dark);
+        }
+        
+        .btn-delete {
+            background: var(--danger-color);
+            color: white;
+        }
+        
+        .btn-delete:hover {
+            background: #c82333;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--white);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow-xl);
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .form-group {
+            flex: 1;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        
+        .form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+        }
+        
+        .alert {
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+        
+        .alert-error {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        
+        .alert-success {
+            background: #d1fae5;
+            color: #059669;
+            border: 1px solid #a7f3d0;
+        }
+
+        @media (max-width: 820px) {
+            .history-header,
+            .history-controls {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .history-summary,
+            .history-charts {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="admin-header">
+            <h1>Admin Dashboard</h1>
+            <div>
+                <span>Welcome, {{ session.admin_username }}</span>
+                <a href="/admin/logout" style="margin-left: 1rem; color: var(--danger-color);">Logout</a>
+            </div>
+        </div>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'error' if category == 'error' else 'success' }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <div class="admin-actions">
+            <button id="clearDbBtn" class="btn-danger">Clear All Database Data</button>
+            <button id="refreshBtn" class="btn-primary">Refresh Sessions</button>
+        </div>
+
+        <div class="history-panel">
+            <div class="history-header">
+                <h2>Weekly History</h2>
+                <div class="history-controls">
+                    <label for="historyWeekStart">
+                        Week
+                        <input id="historyWeekStart" type="date">
+                    </label>
+                    <button id="loadHistoryBtn" class="btn-primary" type="button">Load Week</button>
+                </div>
+            </div>
+            <div class="history-summary">
+                <div class="history-stat">
+                    <span>Academic Time</span>
+                    <strong id="academicHistoryTotal">0h</strong>
+                </div>
+                <div class="history-stat">
+                    <span>Free Task Time</span>
+                    <strong id="freeHistoryTotal">0h</strong>
+                </div>
+                <div class="history-stat">
+                    <span>Combined Time</span>
+                    <strong id="combinedHistoryTotal">0h</strong>
+                </div>
+            </div>
+            <div class="history-charts">
+                <div class="history-chart">
+                    <h3>Academic Time by Subject</h3>
+                    <canvas id="academicHistoryChart"></canvas>
+                </div>
+                <div class="history-chart">
+                    <h3>Free Task Time by Category</h3>
+                    <canvas id="freeHistoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="sessions-table">
+            <div class="table-toolbar">
+                <h2>Study Sessions</h2>
+                <div class="selection-actions">
+                    <span id="sessionsSelectedCount" class="selection-count">0 selected</span>
+                    <button id="deleteSelectedSessionsBtn" class="btn-danger bulk-delete-btn" type="button" disabled>Delete Selected</button>
+                </div>
+            </div>
+            <table id="sessionsTable">
+                <thead>
+                    <tr>
+                        <th class="select-col"><input id="selectAllSessions" class="select-all" type="checkbox" aria-label="Select all sessions"></th>
+                        <th>ID</th>
+                        <th>Subject</th>
+                        <th>Type</th>
+                        <th>Date</th>
+                        <th>Planned Start</th>
+                        <th>Duration</th>
+                        <th>Completed</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="sessionsBody">
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 2rem;">Loading sessions...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="tasks-table">
+            <div class="admin-task-card">
+                <h3>Add a Free Task</h3>
+                <form id="adminTaskForm" class="admin-task-form">
+                    <div class="form-group">
+                        <label for="adminTaskTitle">Title</label>
+                        <input type="text" id="adminTaskTitle" name="title" placeholder="Task title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="adminTaskTag">Tag</label>
+                        <input type="text" id="adminTaskTag" name="tag" placeholder="e.g. errands" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="adminTaskDay">Day</label>
+                        <select id="adminTaskDay" name="day" required>
+                            <option value="Monday">Monday</option>
+                            <option value="Tuesday">Tuesday</option>
+                            <option value="Wednesday">Wednesday</option>
+                            <option value="Thursday">Thursday</option>
+                            <option value="Friday">Friday</option>
+                            <option value="Saturday">Saturday</option>
+                            <option value="Sunday">Sunday</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="adminTaskTime">Planned start</label>
+                        <input type="time" id="adminTaskTime" name="time" required>
+                    </div>
+                    <button type="submit">Add Free Task</button>
+                </form>
+            </div>
+            <div class="table-toolbar">
+                <h2>Free Time Tasks</h2>
+                <div class="selection-actions">
+                    <span id="tasksSelectedCount" class="selection-count">0 selected</span>
+                    <button id="deleteSelectedTasksBtn" class="btn-danger bulk-delete-btn" type="button" disabled>Delete Selected</button>
+                </div>
+            </div>
+            <table id="tasksTable">
+                <thead>
+                    <tr>
+                        <th class="select-col"><input id="selectAllTasks" class="select-all" type="checkbox" aria-label="Select all tasks"></th>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Tag</th>
+                        <th>Day</th>
+                        <th>Time</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tasksBody">
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 2rem;">Loading tasks...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Edit Session Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Session</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="editForm">
+                <input type="hidden" id="sessionId" name="sessionId">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="subjectCode">Subject Code</label>
+                        <input type="text" id="subjectCode" name="subjectCode" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="sessionType">Session Type</label>
+                        <select id="sessionType" name="sessionType" required>
+                            <option value="class">Class</option>
+                            <option value="deep-study">Deep Study</option>
+                            <option value="revision">Revision</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="scheduledDate">Scheduled Date</label>
+                        <input type="date" id="scheduledDate" name="scheduledDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="scheduledTime">Scheduled Time</label>
+                        <input type="time" id="scheduledTime" name="scheduledTime" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="durationMinutes">Duration (minutes)</label>
+                        <input type="number" id="durationMinutes" name="durationMinutes" min="1">
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="completed" name="completed">
+                        <label for="completed">Completed</label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notes">Notes</label>
+                    <textarea id="notes" name="notes"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="focusAreas">Focus Areas</label>
+                    <input type="text" id="focusAreas" name="focusAreas">
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" onclick="closeModal()" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        let sessions = [];
+        let tasks = [];
+        let editingTaskId = null;
+        let selectedSessionIds = new Set();
+        let selectedTaskIds = new Set();
+        let academicHistoryChart = null;
+        let freeHistoryChart = null;
+        
+        // Load admin data on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSessions();
+            loadAdminTasks();
+            initializeHistoryPanel();
+            document.getElementById('selectAllSessions').addEventListener('change', toggleAllSessions);
+            document.getElementById('selectAllTasks').addEventListener('change', toggleAllTasks);
+            document.getElementById('deleteSelectedSessionsBtn').addEventListener('click', deleteSelectedSessions);
+            document.getElementById('deleteSelectedTasksBtn').addEventListener('click', deleteSelectedTasks);
+            document.getElementById('loadHistoryBtn').addEventListener('click', loadWeeklyHistory);
+        });
+        
+        // Clear database
+        document.getElementById('clearDbBtn').addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to clear ALL database data? This action cannot be undone!')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/clear-database', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert('Database cleared successfully!');
+                    loadSessions();
+                    loadAdminTasks();
+                } else {
+                    alert('Failed to clear database: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error clearing database:', error);
+                alert('Error clearing database');
+            }
+        });
+        
+        // Refresh sessions and tasks
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            loadSessions();
+            loadAdminTasks();
+            loadWeeklyHistory();
+        });
+
+        function initializeHistoryPanel() {
+            const input = document.getElementById('historyWeekStart');
+            const today = new Date();
+            const monday = new Date(today);
+            const day = today.getDay();
+            const offset = day === 0 ? -6 : 1 - day;
+            monday.setDate(today.getDate() + offset);
+            input.value = monday.toISOString().slice(0, 10);
+            loadWeeklyHistory();
+        }
+
+        async function loadWeeklyHistory() {
+            const weekStart = document.getElementById('historyWeekStart').value;
+            try {
+                const response = await fetch(`/api/admin/history/weekly?week_start=${encodeURIComponent(weekStart)}`);
+                const result = await parseJsonResponse(response);
+                if (!result.success) {
+                    alert(result.error || 'Failed to load weekly history.');
+                    return;
+                }
+                renderWeeklyHistory(result.history);
+            } catch (error) {
+                console.error('Error loading weekly history:', error);
+                alert(error.message || 'Error loading weekly history');
+            }
+        }
+
+        function renderWeeklyHistory(history) {
+            const totals = history.totals || {};
+            document.getElementById('academicHistoryTotal').textContent = formatAdminHours(totals.academic_minutes || 0);
+            document.getElementById('freeHistoryTotal').textContent = formatAdminHours(totals.free_minutes || 0);
+            document.getElementById('combinedHistoryTotal').textContent = formatAdminHours(totals.combined_minutes || 0);
+
+            academicHistoryChart = renderHistoryChart(
+                academicHistoryChart,
+                'academicHistoryChart',
+                history.academic_by_subject || [],
+                '#4f46e5'
+            );
+            freeHistoryChart = renderHistoryChart(
+                freeHistoryChart,
+                'freeHistoryChart',
+                history.free_by_tag || [],
+                '#0f766e'
+            );
+        }
+
+        function renderHistoryChart(instance, canvasId, rows, color) {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return instance;
+            if (instance) instance.destroy();
+
+            const labels = rows.length ? rows.map(row => row.label || 'Unknown') : ['No data'];
+            const values = rows.length ? rows.map(row => Number(((row.total_minutes || 0) / 60).toFixed(2))) : [0];
+
+            return new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: color,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: context => `${context.parsed.y} hours`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: value => `${value}h`
+                            }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function formatAdminHours(minutes) {
+            const total = Number(minutes || 0);
+            const hours = Math.floor(total / 60);
+            const mins = total % 60;
+            if (hours && mins) return `${hours}h ${mins}m`;
+            if (hours) return `${hours}h`;
+            return `${mins}m`;
+        }
+        
+        // Edit form submission
+        document.getElementById('editForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const sessionData = {
+                subject_code: formData.get('subjectCode'),
+                session_type: formData.get('sessionType'),
+                scheduled_date: formData.get('scheduledDate'),
+                scheduled_time: formData.get('scheduledTime'),
+                duration_minutes: formData.get('durationMinutes') ? parseInt(formData.get('durationMinutes')) : null,
+                completed: formData.get('completed') === 'on',
+                notes: formData.get('notes'),
+                focus_areas: formData.get('focusAreas')
+            };
+            
+            const sessionId = formData.get('sessionId');
+            
+            try {
+                const response = await fetch(`/api/admin/sessions/${sessionId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(sessionData)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert('Session updated successfully!');
+                    closeModal();
+                    loadSessions();
+                } else {
+                    alert('Failed to update session: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error updating session:', error);
+                alert('Error updating session');
+            }
+        });
+        
+        async function loadSessions() {
+            try {
+                const response = await fetch('/api/admin/sessions');
+                const result = await response.json();
+                
+                if (result.success) {
+                    sessions = result.sessions;
+                    selectedSessionIds.clear();
+                    renderSessions();
+                } else {
+                    alert('Failed to load sessions: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error loading sessions:', error);
+                alert('Error loading sessions');
+            }
+        }
+        
+        function renderSessions() {
+            const tbody = document.getElementById('sessionsBody');
+            
+            if (sessions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem;">No sessions found</td></tr>';
+                updateSessionSelectionUI();
+                return;
+            }
+            
+            tbody.innerHTML = sessions.map(session => `
+                <tr>
+                    <td class="select-col">
+                        <input class="row-select session-select" type="checkbox" value="${session.id}" ${selectedSessionIds.has(session.id) ? 'checked' : ''} aria-label="Select session ${session.id}">
+                    </td>
+                    <td>${session.id}</td>
+                    <td>${session.subject_code}</td>
+                    <td>${session.session_type}</td>
+                    <td>${session.scheduled_date}</td>
+                    <td>${session.scheduled_time}</td>
+                    <td>${session.duration_minutes || 'N/A'}</td>
+                    <td>${session.completed ? 'Yes' : 'No'}</td>
+                    <td class="session-actions">
+                        <button class="btn-edit" onclick="editSession(${session.id})">Edit</button>
+                        <button class="btn-delete" onclick="deleteSession(${session.id})">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            document.querySelectorAll('.session-select').forEach(input => {
+                input.addEventListener('change', () => {
+                    const id = parseInt(input.value, 10);
+                    if (input.checked) {
+                        selectedSessionIds.add(id);
+                    } else {
+                        selectedSessionIds.delete(id);
+                    }
+                    updateSessionSelectionUI();
+                });
+            });
+            updateSessionSelectionUI();
+        }
+
+        function toggleAllSessions(event) {
+            selectedSessionIds.clear();
+            if (event.target.checked) {
+                sessions.forEach(session => selectedSessionIds.add(session.id));
+            }
+            document.querySelectorAll('.session-select').forEach(input => {
+                input.checked = event.target.checked;
+            });
+            updateSessionSelectionUI();
+        }
+
+        function updateSessionSelectionUI() {
+            const count = selectedSessionIds.size;
+            const countEl = document.getElementById('sessionsSelectedCount');
+            const deleteBtn = document.getElementById('deleteSelectedSessionsBtn');
+            const selectAll = document.getElementById('selectAllSessions');
+            if (countEl) countEl.textContent = `${count} selected`;
+            if (deleteBtn) deleteBtn.disabled = count === 0;
+            if (selectAll) {
+                selectAll.checked = sessions.length > 0 && count === sessions.length;
+                selectAll.indeterminate = count > 0 && count < sessions.length;
+            }
+        }
+
+        async function deleteSelectedSessions() {
+            const ids = Array.from(selectedSessionIds);
+            if (ids.length === 0) return;
+            if (!confirm(`Delete ${ids.length} selected session(s)? This cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/sessions/batch-delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ ids })
+                });
+                const result = await parseJsonResponse(response);
+                if (result.success) {
+                    alert(`Deleted ${result.deleted} session(s).`);
+                    selectedSessionIds.clear();
+                    loadSessions();
+                } else {
+                    alert('Failed to delete selected sessions: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error deleting selected sessions:', error);
+                alert(error.message || 'Error deleting selected sessions');
+            }
+        }
+        
+        function editSession(sessionId) {
+            const session = sessions.find(s => s.id === sessionId);
+            if (!session) return;
+            
+            document.getElementById('sessionId').value = session.id;
+            document.getElementById('subjectCode').value = session.subject_code;
+            document.getElementById('sessionType').value = session.session_type;
+            document.getElementById('scheduledDate').value = session.scheduled_date;
+            document.getElementById('scheduledTime').value = session.scheduled_time;
+            document.getElementById('durationMinutes').value = session.duration_minutes || '';
+            document.getElementById('completed').checked = session.completed;
+            document.getElementById('notes').value = session.notes || '';
+            document.getElementById('focusAreas').value = session.focus_areas || '';
+            
+            document.getElementById('editModal').style.display = 'block';
+        }
+        
+        async function deleteSession(sessionId) {
+            if (!confirm('Are you sure you want to delete this session?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/sessions/${sessionId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert('Session deleted successfully!');
+                    loadSessions();
+                } else {
+                    alert('Failed to delete session: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error deleting session:', error);
+                alert('Error deleting session');
+            }
+        }
+        
+        async function loadAdminTasks() {
+            try {
+                const response = await fetch('/api/admin/tasks');
+                const result = await response.json();
+
+                if (result.success) {
+                    tasks = result.tasks;
+                    selectedTaskIds.clear();
+                    renderTasks();
+                } else {
+                    alert('Failed to load tasks: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+                alert('Error loading tasks');
+            }
+        }
+
+        document.getElementById('adminTaskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('adminTaskTitle').value.trim();
+            const tag = document.getElementById('adminTaskTag').value.trim();
+            const day = document.getElementById('adminTaskDay').value;
+            const time = document.getElementById('adminTaskTime').value;
+
+            if (!title || !tag || !day || !time) {
+                alert('Please fill in all task fields.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/tasks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ title, tag, day, time })
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    document.getElementById('adminTaskForm').reset();
+                    loadAdminTasks();
+                    alert('Free task added successfully.');
+                } else {
+                    alert(result.error || 'Unable to add task.');
+                }
+            } catch (error) {
+                console.error('Error adding admin task:', error);
+                alert('Error adding task.');
+            }
+        });
+
+        function renderTasks() {
+            const tbody = document.getElementById('tasksBody');
+
+            if (tasks.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">No tasks found</td></tr>';
+                updateTaskSelectionUI();
+                return;
+            }
+
+            tbody.innerHTML = tasks.map(task => {
+                if (editingTaskId === task.id) {
+                    return `
+                        <tr class="task-edit-row">
+                            <td class="select-col"></td>
+                            <td>${task.id}</td>
+                            <td><input id="editTaskTitle_${task.id}" type="text" value="${task.title.replace(/"/g, '&quot;')}" /></td>
+                            <td><input id="editTaskTag_${task.id}" type="text" value="${task.tag.replace(/"/g, '&quot;')}" /></td>
+                            <td>${renderTaskDayOptions(task.day, task.id)}</td>
+                            <td><input id="editTaskTime_${task.id}" type="time" value="${task.time}" /></td>
+                            <td class="task-row-actions">
+                                <button class="btn-primary" onclick="saveTaskEdit(${task.id})">Save</button>
+                                <button class="btn-secondary" onclick="cancelTaskEdit()">Cancel</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+                return `
+                    <tr>
+                        <td class="select-col">
+                            <input class="row-select task-select" type="checkbox" value="${task.id}" ${selectedTaskIds.has(task.id) ? 'checked' : ''} aria-label="Select task ${task.id}">
+                        </td>
+                        <td>${task.id}</td>
+                        <td>${task.title}</td>
+                        <td>${task.tag}</td>
+                        <td>${task.day}</td>
+                        <td>${task.time}</td>
+                        <td class="session-actions">
+                            <button class="btn-edit" onclick="startTaskEdit(${task.id})">Edit</button>
+                            <button class="btn-delete" onclick="deleteTask(${task.id})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.querySelectorAll('.task-select').forEach(input => {
+                input.addEventListener('change', () => {
+                    const id = parseInt(input.value, 10);
+                    if (input.checked) {
+                        selectedTaskIds.add(id);
+                    } else {
+                        selectedTaskIds.delete(id);
+                    }
+                    updateTaskSelectionUI();
+                });
+            });
+            updateTaskSelectionUI();
+        }
+
+        function toggleAllTasks(event) {
+            selectedTaskIds.clear();
+            if (event.target.checked) {
+                tasks.forEach(task => selectedTaskIds.add(task.id));
+            }
+            document.querySelectorAll('.task-select').forEach(input => {
+                input.checked = event.target.checked;
+            });
+            updateTaskSelectionUI();
+        }
+
+        function updateTaskSelectionUI() {
+            const count = selectedTaskIds.size;
+            const countEl = document.getElementById('tasksSelectedCount');
+            const deleteBtn = document.getElementById('deleteSelectedTasksBtn');
+            const selectAll = document.getElementById('selectAllTasks');
+            if (countEl) countEl.textContent = `${count} selected`;
+            if (deleteBtn) deleteBtn.disabled = count === 0;
+            if (selectAll) {
+                selectAll.checked = tasks.length > 0 && count === tasks.length;
+                selectAll.indeterminate = count > 0 && count < tasks.length;
+            }
+        }
+
+        async function deleteSelectedTasks() {
+            const ids = Array.from(selectedTaskIds);
+            if (ids.length === 0) return;
+            if (!confirm(`Delete ${ids.length} selected free task(s)? This cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/tasks/batch-delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ ids })
+                });
+                const result = await parseJsonResponse(response);
+                if (result.success) {
+                    alert(`Deleted ${result.deleted} free task(s).`);
+                    selectedTaskIds.clear();
+                    loadAdminTasks();
+                } else {
+                    alert('Failed to delete selected tasks: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error deleting selected tasks:', error);
+                alert(error.message || 'Error deleting selected tasks');
+            }
+        }
+
+        async function parseJsonResponse(response) {
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                return response.json();
+            }
+
+            const text = await response.text();
+            throw new Error(`Request failed with HTTP ${response.status}. ${text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}`);
+        }
+
+        function renderTaskDayOptions(selectedDay, taskId) {
+            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            return `
+                <select id="editTaskDay_${taskId}">
+                    ${days.map(day => `<option value="${day}" ${day === selectedDay ? 'selected' : ''}>${day}</option>`).join('')}
+                </select>
+            `;
+        }
+
+        function startTaskEdit(taskId) {
+            editingTaskId = taskId;
+            renderTasks();
+        }
+
+        function cancelTaskEdit() {
+            editingTaskId = null;
+            renderTasks();
+        }
+
+        async function saveTaskEdit(taskId) {
+            const title = document.getElementById(`editTaskTitle_${taskId}`).value.trim();
+            const tag = document.getElementById(`editTaskTag_${taskId}`).value.trim();
+            const day = document.getElementById(`editTaskDay_${taskId}`).value;
+            const time = document.getElementById(`editTaskTime_${taskId}`).value;
+
+            if (!title || !tag || !day || !time) {
+                alert('Please complete all fields before saving.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/tasks/${taskId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ title, tag, day, time })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    editingTaskId = null;
+                    await loadAdminTasks();
+                } else {
+                    alert('Failed to save task: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error saving task:', error);
+                alert('Error saving task');
+            }
+        }
+
+        async function deleteTask(taskId) {
+            if (!confirm('Are you sure you want to delete this task?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/tasks/${taskId}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('Task deleted successfully!');
+                    loadAdminTasks();
+                } else {
+                    alert('Failed to delete task: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error deleting task:', error);
+                alert('Error deleting task');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            const sessionModal = document.getElementById('editModal');
+            if (e.target === sessionModal) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+Flask==2.3.3
+Werkzeug==2.3.7
+Flask-Compress>=1.13
+mysql-connector-python>=8.3
+python-dotenv>=1.0
+groq>=0.5
+requests>=2.31
+bcrypt>=4.0
+Flask-Session>=0.5
+gunicorn>=21.2

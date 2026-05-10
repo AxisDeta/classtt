@@ -1,0 +1,65 @@
+# Environment Variables
+.env
+.env.local
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Flask
+instance/
+.webassets-cache
+*.log
+flask_session/
+.flaskenv
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.sql
+
+# Cache
+.pytest_cache/
+.coverage
+.mypy_cache/
+.ruff_cache/
+
+# Render / deployment
+.render/
+
+# OS
+Thumbs.db
+.DS_Store
