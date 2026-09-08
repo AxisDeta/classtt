@@ -20,8 +20,35 @@ class StudyAI:
             raise ValueError("GROQ_API_KEY not found in environment variables")
         
         self.client = Groq(api_key=api_key)
-        self.model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
-        LOG.info("✓ Groq AI client initialized successfully")
+        self.model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+        self.fallback_models = [self.model, "openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b", "qwen/qwen3.6-27b"]
+        LOG.info("Groq AI client initialized successfully")
+    
+    def _chat_completion(self, messages, temperature=0.7, max_tokens=150, top_p=1):
+        """Execute chat completion with fallback models if the primary model is unavailable."""
+        models_to_try = []
+        for m in self.fallback_models:
+            if m and m not in models_to_try:
+                models_to_try.append(m)
+        
+        last_err = None
+        for model_name in models_to_try:
+            try:
+                response = self.client.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    temperature=temperature,
+                    max_completion_tokens=max_tokens,
+                    top_p=top_p,
+                    stream=False
+                )
+                self.model = model_name
+                return response
+            except Exception as err:
+                last_err = err
+                LOG.warning(f"Groq model {model_name} failed: {err}. Trying next fallback...")
+        if last_err:
+            raise last_err
     
     def generate_study_recommendation(self, subject_code, subject_info, progress_data, recent_context=None):
         """
@@ -141,8 +168,7 @@ Keep it concise (2-3 sentences).
 """
             
             # Call Groq API
-            message = self.client.chat.completions.create(
-                model=self.model,
+            message = self._chat_completion(
                 messages=[
                     {
                         "role": "user",
@@ -150,9 +176,8 @@ Keep it concise (2-3 sentences).
                     }
                 ],
                 temperature=0.7,
-                max_completion_tokens=150,
-                top_p=1,
-                stream=False
+                max_tokens=150,
+                top_p=1
             )
             
             content = message.choices[0].message.content.strip()
@@ -210,8 +235,7 @@ Tell the student directly: [One encouraging summary sentence about your progress
 Keep it concise (2-3 sentences total).
 """
             
-            message = self.client.chat.completions.create(
-                model=self.model,
+            message = self._chat_completion(
                 messages=[
                     {
                         "role": "user",
@@ -219,9 +243,8 @@ Keep it concise (2-3 sentences total).
                     }
                 ],
                 temperature=0.7,
-                max_completion_tokens=100,
-                top_p=1,
-                stream=False
+                max_tokens=100,
+                top_p=1
             )
             
             summary = message.choices[0].message.content.strip()
@@ -264,8 +287,7 @@ Format as:
 Make them practical, actionable, and specific to the subject matter.
 """
             
-            message = self.client.chat.completions.create(
-                model=self.model,
+            message = self._chat_completion(
                 messages=[
                     {
                         "role": "user",
@@ -273,9 +295,8 @@ Make them practical, actionable, and specific to the subject matter.
                     }
                 ],
                 temperature=0.8,
-                max_completion_tokens=200,
-                top_p=1,
-                stream=False
+                max_tokens=200,
+                top_p=1
             )
             
             tips_text = message.choices[0].message.content.strip()
@@ -331,8 +352,7 @@ Based on this pattern, tell the student:
 Keep it concise (2-3 sentences).
 """
             
-            message = self.client.chat.completions.create(
-                model=self.model,
+            message = self._chat_completion(
                 messages=[
                     {
                         "role": "user",
@@ -340,9 +360,8 @@ Keep it concise (2-3 sentences).
                     }
                 ],
                 temperature=0.7,
-                max_completion_tokens=120,
-                top_p=1,
-                stream=False
+                max_tokens=120,
+                top_p=1
             )
             
             analysis = message.choices[0].message.content.strip()
@@ -418,8 +437,7 @@ Provide a brief weekly insights report in this format:
 Keep it concise and actionable (3-4 sentences total).
 """
             
-            message = self.client.chat.completions.create(
-                model=self.model,
+            message = self._chat_completion(
                 messages=[
                     {
                         "role": "user",
@@ -427,9 +445,8 @@ Keep it concise and actionable (3-4 sentences total).
                     }
                 ],
                 temperature=0.7,
-                max_completion_tokens=250,
-                top_p=1,
-                stream=False
+                max_tokens=250,
+                top_p=1
             )
             
             insights = message.choices[0].message.content.strip()

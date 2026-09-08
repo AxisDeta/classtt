@@ -125,97 +125,339 @@ schedule_data = {
     "Monday": {
         "day_number": 1,
         "classes": [
-            {"time": "7:00am – 9:00am", "subject": "SST205", "title": "Probability & Statistics II", "color": "#FF6B6B"},
-            {"time": "1:00pm – 3:00pm", "subject": "SMA203", "title": "Linear Algebra II", "color": "#4ECDC4"}
+            {"time": "7:00am – 9:00am", "subject": "SMA335", "title": "ODEs I", "color": "#3B82F6"},
+            {"time": "9:00am – 11:00am", "subject": "SMA330", "title": "Numerical Analysis I", "color": "#F59E0B"},
+            {"time": "11:00am – 1:00pm", "subject": "SST305", "title": "Theory of Estimation", "color": "#EF4444"}
         ],
-        "deep_study": {"time": "9:45am – 11:45am", "subject": "SST205", "title": "Deep Study", "color": "#FF6B6B"},
-        "revision": {"time": "7:30pm – 8:30pm", "subject": "SMA201", "title": "Revision", "color": "#95E1D3"}
+        "deep_study": [
+            {
+                "time": "2:00pm – 4:00pm",
+                "subject": "SST305",
+                "title": "SST 305 Deep Study",
+                "color": "#EF4444",
+                "reason": "You've just had 6 straight hours of lectures ending with Estimation Theory. Striking while it's fresh matters more here than anywhere else this week — MLE derivations and estimator-property proofs decay fast if left even a day."
+            }
+        ],
+        "revision": [
+            {
+                "time": "7:00pm – 8:00pm",
+                "subject": "SMA335",
+                "title": "SMA 335 Revision",
+                "color": "#3B82F6",
+                "focus": [
+                    "Classify the ODE type before attempting a method",
+                    "Redo one first-order and one second-order example from memory",
+                    "Review integrating factor / characteristic equation shortcuts"
+                ]
+            }
+        ]
     },
     "Tuesday": {
         "day_number": 2,
         "classes": [
-            {"time": "3:00pm – 5:00pm", "subject": "SST201", "title": "Operations Research I", "color": "#FFE66D"}
+            {"time": "7:00am – 9:00am", "subject": "SST304", "title": "Multivariate Statistical Methods I", "color": "#8B5CF6"},
+            {"time": "1:00pm – 2:00pm", "subject": "SMA330", "title": "Numerical Analysis I", "color": "#F59E0B"}
         ],
-        "deep_study": {"time": "8:00am – 10:00am", "subject": "SMA203", "title": "Deep Study", "color": "#4ECDC4"},
-        "revision": {"time": "7:00pm – 8:00pm", "subject": "SST205", "title": "Revision", "color": "#FF6B6B"}
+        "deep_study": [
+            {
+                "time": "9:30am – 11:30am",
+                "subject": "SST304",
+                "title": "SST 304 Deep Study",
+                "color": "#8B5CF6",
+                "reason": "Multivariate methods and matrix decompositions studied right after exposure while theory is fresh. Dedicated deep block for covariance structures and PCA.",
+                "focus": [
+                    "Covariance and correlation matrices",
+                    "Spectral decomposition and eigen-properties",
+                    "Derive multivariate normal density"
+                ]
+            },
+            {
+                "time": "2:30pm – 4:30pm",
+                "subject": "SST101",
+                "title": "SST 101 Deep Study (retake)",
+                "color": "#EC4899",
+                "reason": "Free slot in an otherwise light afternoon. Placeholder until the actual SST 101 lecture time is confirmed — move right after the real lecture once known.",
+                "focus": [
+                    "Target prior CAT/exam weak points",
+                    "Probability distributions and Bayes theorem",
+                    "Hypothesis testing worked problems"
+                ]
+            }
+        ],
+        "revision": [
+            {
+                "time": "7:00pm – 8:00pm",
+                "subject": "SST301",
+                "title": "SST 301 Revision",
+                "color": "#06B6D4",
+                "focus": [
+                    "Syntax drills (30 min)",
+                    "One small script from scratch, no copy-paste (30 min)"
+                ]
+            }
+        ]
     },
     "Wednesday": {
         "day_number": 3,
         "classes": [
-            {"time": "7:00am – 8:00am", "subject": "SMA201", "title": "Calculus III", "color": "#95E1D3"},
-            {"time": "9:00am – 11:00am", "subject": "SST203", "title": "Database Systems", "color": "#A8E6CF"},
-            {"time": "1:00pm – 3:00pm", "subject": "SMA204", "title": "Algebraic Structures", "color": "#FFD3B6"}
+            {"time": "7:00am – 8:00am", "subject": "SST301", "title": "Programming for Statistics I", "color": "#06B6D4"},
+            {"time": "1:00pm – 2:00pm", "subject": "SST305", "title": "Theory of Estimation", "color": "#EF4444"}
         ],
-        "deep_study": {"time": "3:45pm – 5:45pm", "subject": "SMA204", "title": "Deep Study", "color": "#FFD3B6"},
-        "revision": {"time": "7:30pm – 8:30pm", "subject": "SMA203", "title": "Revision", "color": "#4ECDC4"}
+        "deep_study": [
+            {
+                "time": "8:30am – 10:30am",
+                "subject": "SMA300",
+                "title": "SMA 300 Deep Study",
+                "color": "#10B981",
+                "reason": "Real Analysis's primary weekly block, placed deliberately in the morning with no lecture pressing on either side — sustained, undistracted proof-construction time."
+            }
+        ],
+        "revision": [
+            {
+                "time": "7:00pm – 8:00pm",
+                "subject": "SMA330",
+                "title": "SMA 330 Revision",
+                "color": "#F59E0B",
+                "focus": [
+                    "Redo one root-finding and one interpolation problem",
+                    "Check error bounds by hand, not by intuition"
+                ]
+            }
+        ]
     },
     "Thursday": {
         "day_number": 4,
         "classes": [
-            {"time": "7:00am – 9:00am", "subject": "SST201", "title": "Operations Research I", "color": "#FFE66D"},
-            {"time": "9:00am – 11:00am", "subject": "SMA201", "title": "Calculus III", "color": "#95E1D3"}
+            {"time": "7:00am – 9:00am", "subject": "SMA335", "title": "ODEs I", "color": "#3B82F6"},
+            {"time": "9:00am – 11:00am", "subject": "SST301", "title": "Programming for Statistics I", "color": "#06B6D4"},
+            {"time": "3:00pm – 5:00pm", "subject": "SMA300", "title": "Real Analysis I", "color": "#10B981"}
         ],
-        "deep_study": {"time": "1:00pm – 3:00pm", "subject": "SMA201", "title": "Deep Study", "color": "#95E1D3"},
-        "revision": {"time": "7:00pm – 8:00pm", "subject": "SST203", "title": "Revision", "color": "#A8E6CF"}
+        "deep_study": [
+            {
+                "time": "11:15am – 1:15pm",
+                "subject": "SMA335",
+                "title": "SMA 335 Deep Study",
+                "color": "#3B82F6",
+                "reason": "Right after this week's second ODE lecture and before afternoon Real Analysis class — consolidate ODE methods while doubly fresh."
+            }
+        ],
+        "revision": [
+            {
+                "time": "5:00pm – 6:00pm",
+                "subject": "SST101",
+                "title": "SST 101 Revision (retake)",
+                "color": "#EC4899",
+                "focus": [
+                    "Redo one probability distribution problem and one hypothesis-testing problem from memory",
+                    "Prioritize whichever topic caused difficulty previously"
+                ]
+            },
+            {
+                "time": "7:00pm – 8:00pm",
+                "subject": "SST305",
+                "title": "SST 305 Revision",
+                "color": "#EF4444",
+                "focus": [
+                    "Redo one MLE derivation from scratch",
+                    "One unbiasedness/consistency proof, no notes"
+                ]
+            }
+        ]
     },
     "Friday": {
         "day_number": 5,
         "classes": [
-            {"time": "1:00pm – 2:00pm", "subject": "SMA204", "title": "Algebraic Structures", "color": "#FFD3B6"}
+            {"time": "8:00am – 9:00am", "subject": "SST304", "title": "Multivariate Statistical Methods I", "color": "#8B5CF6"},
+            {"time": "3:00pm – 4:00pm", "subject": "SMA300", "title": "Real Analysis I", "color": "#10B981"}
         ],
-        "deep_study": {"time": "8:00am – 10:00am", "subject": "SST201", "title": "Deep Study", "color": "#FFE66D"},
-        "revision": {"time": "7:00pm – 8:00pm", "subject": "SMA204", "title": "Revision", "color": "#FFD3B6"}
+        "deep_study": [
+            {
+                "time": "9:30am – 11:30am",
+                "subject": "SMA330",
+                "title": "SMA 330 Deep Study",
+                "color": "#F59E0B",
+                "reason": "Second and final Numerical Analysis block for the week, in the morning while sharp, well before afternoon Real Analysis lecture."
+            }
+        ],
+        "revision": [
+            {
+                "time": "4:15pm – 5:15pm",
+                "subject": "SMA300",
+                "title": "SMA 300 Revision (Reinforcement)",
+                "color": "#10B981",
+                "focus": [
+                    "Immediate post-lecture proof reconstruction",
+                    "Catch whatever lecture introduced before weekend gap"
+                ]
+            }
+        ]
     },
     "Saturday": {
         "day_number": 6,
         "classes": [],
-        "deep_study": {"time": "8:00am – 10:00am", "subject": "SST203", "title": "Deep Study", "color": "#A8E6CF"},
-        "revision": {"time": "6:00pm – 7:00pm", "subject": "SST201", "title": "Revision", "color": "#FFE66D"}
+        "deep_study": [
+            {
+                "time": "8:00am – 10:00am",
+                "subject": "SMA300",
+                "title": "SMA 300 Bonus Deep Study",
+                "color": "#10B981",
+                "reason": "Real Analysis 3rd weekly touchpoint. Fully rested morning to push into harder problem sets or past-paper problems."
+            }
+        ],
+        "revision": [
+            {
+                "time": "10:30am – 11:30am",
+                "subject": "SST304",
+                "title": "SST 304 Revision",
+                "color": "#8B5CF6",
+                "focus": [
+                    "Redo one PCA or discriminant analysis worked example by hand",
+                    "Connect explicitly to machine learning practical background"
+                ]
+            }
+        ]
     },
     "Sunday": {
         "day_number": 7,
         "classes": [],
-        "deep_study": None,
-        "revision": {"time": "4:00pm – 5:00pm", "subject": "Weekly Reflection", "title": "Reflection & Planning", "color": "#FFDAB9"}
+        "deep_study": [],
+        "revision": [
+            {
+                "time": "4:00pm – 5:00pm",
+                "subject": "Weekly Reflection",
+                "title": "Weekly Reflection & Audit",
+                "color": "#A78BFA",
+                "focus": [
+                    "Identify single weakest unit from the week (usually SMA 300 or SST 305)",
+                    "Update running note on unjustified claims/proofs",
+                    "Prepare for Monday's 3-lecture morning"
+                ]
+            },
+            {
+                "time": "7:00pm – 8:00pm",
+                "subject": "Optional Light Revision",
+                "title": "Optional Light Revision (Weakest Unit)",
+                "color": "#C084FC",
+                "focus": [
+                    "Only the single weakest unit identified during reflection — do not touch multiple subjects"
+                ]
+            }
+        ]
     }
 }
 
 subject_info = {
-    "SMA201": {
-        "title": "Calculus III",
-        "color": "#95E1D3",
-        "description": "Multivariable calculus, partial differentiation, multiple integrals, vector calculus, optimization, and integral theorems.",
-        "outline": course_outlines.get("SMA201", "Course outline not yet available.")
+    "SMA300": {
+        "title": "Real Analysis I",
+        "color": "#10B981",
+        "difficulty_rank": 1,
+        "difficulty_label": "Hardest (3 touchpoints/week)",
+        "description": "Rigorous foundation of real numbers ℝ, epsilon-delta limit proofs, sequence and series convergence, continuity, differentiability, and Riemann integration.",
+        "method": "Reconstruct every proof from memory after first seeing it; never move to next theorem until you can restate previous logic unaided.",
+        "mistake": "Reading a proof and believing that is the same as being able to produce one.",
+        "resources": "Understanding Analysis (Abbott); MIT OCW 18.100A",
+        "outline": course_outlines.get("SMA300", "Course outline not yet available.")
     },
-    "SMA203": {
-        "title": "Linear Algebra II",
-        "color": "#4ECDC4",
-        "description": "Matrix theory, determinants, eigenvalues, eigenvectors, linear transformations, and change of basis.",
-        "outline": course_outlines.get("SMA203", "Course outline not yet available.")
+    "SST305": {
+        "title": "Theory of Estimation",
+        "color": "#EF4444",
+        "difficulty_rank": 2,
+        "difficulty_label": "2nd Hardest (2 touchpoints/week)",
+        "description": "Statistical estimation theory, MLE and Method of Moments derivations, estimator properties (unbiasedness, efficiency, consistency, sufficiency), CRLB, and Rao-Blackwell.",
+        "method": "Derive, do not memorize — for every named estimator, show why it has the properties it has.",
+        "mistake": "Treating 'unbiased', 'efficient', and 'consistent' as interchangeable praise words instead of distinct provable properties.",
+        "resources": "Statistical Inference (Casella & Berger)",
+        "outline": course_outlines.get("SST305", "Course outline not yet available.")
     },
-    "SMA204": {
-        "title": "Algebraic Structures",
-        "color": "#FFD3B6",
-        "description": "Group and ring theory, homomorphisms, fields, and algebraic system structure.",
-        "outline": course_outlines.get("SMA204", "Course outline not yet available.")
+    "SMA335": {
+        "title": "Ordinary Differential Equations I",
+        "color": "#3B82F6",
+        "difficulty_rank": 3,
+        "difficulty_label": "Medium-Hard",
+        "description": "First-order ODEs, higher-order linear equations, characteristic equations, variation of parameters, systems of linear ODEs, and applied mathematical modeling.",
+        "method": "Classify the equation type first, every single time, before reaching for a method.",
+        "mistake": "Pattern-matching to a remembered solution instead of verifying the classification.",
+        "resources": "Elementary Differential Equations (Boyce & DiPrima); Paul's Online Math Notes",
+        "outline": course_outlines.get("SMA335", "Course outline not yet available.")
     },
-    "SST201": {
-        "title": "Operations Research I",
-        "color": "#FFE66D",
-        "description": "Optimization models, linear programming, transportation, assignment, duality, and network analysis.",
-        "outline": course_outlines.get("SST201", "Course outline not yet available.")
+    "SMA330": {
+        "title": "Numerical Analysis I",
+        "color": "#F59E0B",
+        "difficulty_rank": 4,
+        "difficulty_label": "Medium",
+        "description": "Root-finding algorithms (Newton-Raphson, bisection), polynomial interpolation, numerical differentiation/integration, error propagation and analysis.",
+        "method": "After solving, always ask how the error propagates or grows — active calculation beats intuition.",
+        "mistake": "Getting a numerically 'close enough' answer without understanding why it is close or how error behaves.",
+        "resources": "Numerical Analysis (Burden & Faires); 3Blue1Brown for intuition",
+        "outline": course_outlines.get("SMA330", "Course outline not yet available.")
     },
-    "SST203": {
-        "title": "Database Systems",
-        "color": "#A8E6CF",
-        "description": "Database design, normalization, SQL querying, data modeling, and DBA fundamentals.",
-        "outline": course_outlines.get("SST203", "Course outline not yet available.")
+    "SST304": {
+        "title": "Multivariate Statistical Methods I",
+        "color": "#8B5CF6",
+        "difficulty_rank": 5,
+        "difficulty_label": "Medium",
+        "description": "Multivariate normal distributions, Principal Component Analysis (PCA), factor analysis, discriminant analysis, and multivariate regression.",
+        "method": "Lean on existing ML background deliberately — connect every technique directly to practical ML tools.",
+        "mistake": "Relearning these as abstract statistics instead of recognizing tools you already use.",
+        "resources": "Applied Multivariate Statistical Analysis (Johnson & Wichern)",
+        "outline": course_outlines.get("SST304", "Course outline not yet available.")
     },
-    "SST205": {
-        "title": "Probability & Statistics II",
-        "color": "#FF6B6B",
-        "description": "Probability distributions, conditional probability, statistical inference, and applied problem solving.",
-        "outline": course_outlines.get("SST205", "Course outline not yet available.")
+    "SST301": {
+        "title": "Programming Language for Statistics I",
+        "color": "#06B6D4",
+        "difficulty_rank": 6,
+        "difficulty_label": "Lightest Touch",
+        "description": "Statistical computing, data structures, syntax paradigms (R / Python), data wrangling pipelines, simulations, and custom statistical scripting.",
+        "method": "Light, consistent touches: 30 min syntax drills + 30 min writing a small script from scratch without copy-pasting.",
+        "mistake": "Under-investing so much that you miss language-specific statistical idioms (e.g., vectorized/formula syntax).",
+        "resources": "R for Data Science (Hadley Wickham) / Python for Data Analysis",
+        "outline": course_outlines.get("SST301", "Course outline not yet available.")
+    },
+    "SST101": {
+        "title": "Intro to Probability & Statistics (Retake)",
+        "color": "#EC4899",
+        "difficulty_rank": 7,
+        "difficulty_label": "Retake Focus (2 touchpoints/week)",
+        "description": "Probability axioms, Bayes' theorem, discrete/continuous random variables, probability distributions, sampling theory, and hypothesis testing.",
+        "method": "Identify exactly what caused previous exam difficulty; redo probability distribution and hypothesis testing problems from memory.",
+        "mistake": "Treating a retake as 'easy content, low effort needed' instead of systematically fixing specific conceptual gaps.",
+        "resources": "Probability & Statistics for Engineers & Scientists (Walpole et al.); past CATs/exams",
+        "outline": course_outlines.get("SST101", "Course outline not yet available.")
+    }
+}
+
+rules_and_strategy = {
+    "title": "3rd Year, 1st Semester — Strategic Framework",
+    "non_negotiable_rules": [
+        {"rule": "Rule 1", "text": "Phone away during every deep study block, no exceptions for SMA 300 or SST 305."},
+        {"rule": "Rule 2", "text": "Never study two technical subjects in the same block. Context switching costs you more than the time it takes."},
+        {"rule": "Rule 3", "text": "Handwrite mathematics (SMA 300, SMA 330, SMA 335, SST 305 derivations). Typing invites shallow engagement on proof-heavy material."},
+        {"rule": "Rule 4", "text": "Every Friday night, name the week's weakest unit. It almost always earns Saturday or Sunday's light-revision slot."},
+        {"rule": "Rule 5", "text": "Start past papers by Week 3, especially for SMA 300 and SST 305. Waiting longer compounds the gap rather than closing it."},
+        {"rule": "Rule 6", "text": "Keep a running note of any statistical or ML claim you use in practice without being able to fully justify it. Feeds directly into research paper directions."}
+    ],
+    "productivity_protocol": [
+        {"phase": "First 15–20 Minutes", "items": ["Review previous session summary notes", "Identify specific weak point from last time", "Define one concrete objective for today's block"]},
+        {"phase": "Next 80–90 Minutes", "items": ["Active problem solving only — no passive reading", "Derivations and proofs from memory before checking notes", "Worked examples redone without looking"]},
+        {"phase": "Final 15–20 Minutes", "items": ["Condense today's work into a short note", "Flag anything still shaky for Sunday's reflection"]}
+    ],
+    "difficulty_ranking": [
+        {"rank": 1, "code": "SMA300", "title": "Real Analysis I", "touchpoints": "3 touchpoints/week", "level": "Hardest"},
+        {"rank": 2, "code": "SST305", "title": "Theory of Estimation", "touchpoints": "2 touchpoints/week", "level": "2nd Hardest"},
+        {"rank": 3, "code": "SMA335", "title": "Ordinary Differential Equations I", "touchpoints": "2 touchpoints/week", "level": "Medium-Hard"},
+        {"rank": 4, "code": "SMA330", "title": "Numerical Analysis I", "touchpoints": "2 touchpoints/week", "level": "Medium"},
+        {"rank": 5, "code": "SST304", "title": "Multivariate Statistical Methods I", "touchpoints": "1 Deep + 1 Revision", "level": "Medium"},
+        {"rank": 6, "code": "SST301", "title": "Programming Language for Stats I", "touchpoints": "1 Revision touchpoint", "level": "Easiest"},
+        {"rank": 7, "code": "SST101", "title": "Intro to Probability & Statistics", "touchpoints": "2 touchpoints/week", "level": "Retake Focus"}
+    ],
+    "resources": {
+        "SMA300": "Understanding Analysis (Abbott); MIT OCW 18.100A",
+        "SST305": "Statistical Inference (Casella & Berger)",
+        "SMA335": "Elementary Differential Equations (Boyce & DiPrima); Paul's Online Math Notes",
+        "SMA330": "Numerical Analysis (Burden & Faires); 3Blue1Brown",
+        "SST304": "Applied Multivariate Statistical Analysis (Johnson & Wichern)",
+        "SST301": "R for Data Science (Hadley Wickham) / Python for Data Analysis",
+        "SST101": "Probability & Statistics for Engineers & Scientists (Walpole et al.); past CATs/exams"
     }
 }
 
@@ -353,10 +595,17 @@ def get_schedule():
     response = jsonify({
         "schedule": schedule_data,
         "subjects": subject_info,
-        "date_range": "11 May 2026 → 26 June 2026"
+        "strategy": rules_and_strategy,
+        "semester_title": "3rd Year, 1st Semester",
+        "date_range": "3rd Year, 1st Semester"
     })
     response.headers['Cache-Control'] = 'public, max-age=30'
     return response
+
+@app.route('/api/strategy')
+def get_strategy():
+    """Get non-negotiable rules, productivity protocol, and resources"""
+    return jsonify(rules_and_strategy), 200
 
 @app.route('/api/tasks')
 def get_tasks():
@@ -686,7 +935,6 @@ def acknowledge_recommendation(rec_id):
         LOG.error(f"Error acknowledging recommendation: {err}")
         return jsonify({"error": str(err)}), 500
 
-
 @app.route('/api/ai/acknowledge-all', methods=['POST'])
 def acknowledge_all_recommendations():
     """Mark all recommendations as acknowledged"""
@@ -712,13 +960,13 @@ def get_weekly_insights():
         
         # Add list of improvement areas based on insights
         improvement_areas = [
-            "Master core concepts before moving to advanced topics",
-            "Practice more problem-solving exercises regularly", 
-            "Review lecture notes and key formulas weekly",
-            "Focus on understanding rather than memorization",
-            "Seek help early when struggling with concepts",
-            "Balance study time across all subjects",
-            "Use active recall and spaced repetition techniques"
+            "SMA 300: Reconstruct every proof from memory immediately after reading",
+            "SST 305: Derive estimator properties (unbiasedness, CRLB, MLE) step-by-step from scratch",
+            "SMA 335: Classify ODE type before choosing an integrating factor or method",
+            "SMA 330: Hand-calculate error bounds and error propagation for numerical solutions",
+            "SST 304: Connect PCA and discriminant analysis to your practical machine learning intuition",
+            "SST 301: Write statistics scripts from scratch without copying or passive reading",
+            "SST 101: Focus on the specific exam and CAT topics that caused difficulty previously"
         ]
         
         return jsonify({

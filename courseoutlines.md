@@ -1,74 +1,66 @@
-## 1. SMA204: Algebraic Structures 
+## 1. SMA300: Real Analysis I
+Priority Ranking: #1 Hardest (3 touchpoints/week)
+Key Topics & Syllabus:
+- Properties of the real number system ℝ, completeness axiom, Archimedean property, supremum and infimum
+- Sequences and series of real numbers, limit theorems, Cauchy sequences, Bolzano-Weierstrass theorem
+- Limits of functions, epsilon-delta proofs, continuity and uniform continuity
+- Differentiability, Mean Value Theorems, Taylor's Theorem
+- Riemann integration theory and fundamental theorem of calculus
+Suggested Resources: Understanding Analysis (Stephen Abbott); MIT OCW 18.100A; Active proof reconstruction
 
-Binary operations on a set
-Symmetry of geometrical figures, associative and commutative properties, 
-identity elements and inverses
-Definition of a group. Cyclic groups, additive and multiplicative groups of 
-numbers
-Groups of symmetry and operations, Subgroups, Cosets and Lagrange’s 
-Theorem
-Sets with two operations. Distributive Laws
-Rings, definition of integers (mod n)
-Polynomials and matrix rings, Units and zero divisors
-Nilpotent elements
-Integral domains and fields
-Fields of reals, rational
-Complex numbers and integers (mod p)
-Characteristics of rings and fields
+## 2. SST305: Theory of Estimation
+Priority Ranking: #2 Hardest (2 touchpoints/week)
+Key Topics & Syllabus:
+- Point estimation methods: Maximum Likelihood Estimation (MLE), Method of Moments (MOM), Least Squares
+- Estimator properties: Unbiasedness, efficiency, consistency, sufficiency, completeness
+- Cramér-Rao Lower Bound (CRLB), Fisher Information, Rao-Blackwell Theorem, Lehmann-Scheffé Theorem
+- Interval estimation, confidence intervals, pivotal quantity method
+Suggested Resources: Statistical Inference (Casella & Berger)
 
-## 2.SMA 201: CALCULUS III
-Mean value theorem, Rolle’s Theorem, Cauchy’s Mean Value Theorem (Lagrange’s theorem), 
-L’Hospital’s Rule, Taylor’s and Maclaurin series. Functions of many variables: Partial 
-differentiation and its applications: Maxima, Minima and saddle point, Lagrange Multipliers. 
-Integration: Line, double and triple integrals: Integral theorems: Green’s theorem.
+## 3. SMA335: Ordinary Differential Equations I
+Priority Ranking: #3
+Key Topics & Syllabus:
+- First-order differential equations: separable, exact, integrating factors, homogeneous, Bernoulli equations
+- Second-order and higher-order linear ODEs: characteristic equation, undetermined coefficients, variation of parameters
+- Systems of linear first-order differential equations, matrix methods, phase portraits
+- Applied modeling in physical and biological sciences
+Suggested Resources: Elementary Differential Equations and Boundary Value Problems (Boyce & DiPrima); Paul's Online Math Notes
 
-## 3. SMA203: Linear Algebra II
+## 4. SMA330: Numerical Analysis I
+Priority Ranking: #4
+Key Topics & Syllabus:
+- Numerical root-finding: Bisection, Regula Falsi, Newton-Raphson, Fixed-point iteration, Secant method
+- Interpolation and polynomial approximation: Lagrange polynomials, Newton divided differences
+- Numerical differentiation and numerical integration (Trapezoidal, Simpson's rules)
+- Error analysis, floating-point arithmetic, convergence rates, error bounds & propagation
+Suggested Resources: Numerical Analysis (Burden & Faires); 3Blue1Brown for intuitive calculus foundations
 
-1 Determinants of general matrices and their properties
-2 Properties of determinants of matrices
-3 Gram-schimdt orthogonalization process
-4 Linear transformation: definition,.
-5 kernel, image, rank and nullity
-6 Matrix representation
-7 Change of basis
-8 Similar matrices
-9 Eigenvalues and eigenvectors
-10 Diagonalization of matrices
-11 Characteristic and minimal polynomial
-12 Cayley Hamilton Theorem
+## 5. SST304: Multivariate Statistical Methods I
+Priority Ranking: #5
+Key Topics & Syllabus:
+- Multivariate distributions, properties of the Multivariate Normal distribution
+- Principal Component Analysis (PCA) and dimensionality reduction
+- Factor analysis, orthogonal and oblique rotations
+- Canonical correlation analysis and discriminant analysis
+- Multivariate regression analysis and hypothesis testing for mean vectors (Hotelling's T-squared)
+Suggested Resources: Applied Multivariate Statistical Analysis (Johnson & Wichern)
 
-## 4. SST201: Operations Research I
+## 6. SST301: Programming Language for Statistics I
+Priority Ranking: #6 (Lightest touch)
+Key Topics & Syllabus:
+- Statistical programming foundations (R and Python for statistics)
+- Data structures: vectors, matrices, data frames, lists, factor vectors
+- Data manipulation, filtering, aggregation, statistical computing routines
+- Statistical simulation, Monte Carlo techniques, hypothesis testing scripts
+Suggested Resources: R for Data Science (Hadley Wickham) / Python for Data Analysis (Wes McKinney)
 
-LINEAR PRGRAMMING MODEL FORMULATION
-GRAPHICAL SOLUTION OF LINEAR PROGRAMMING PROBLEMS
-ALGEBRAIC SOLUTION OF LINEAR PROGRAMMING PROBLEMS
-DUALITY AND SENSITIVITY ANALYSIS
-TRANSPORTATION MODEL-NORTH WEST CORNER CELL METHOD
-TRANSPORTATION MODEL-LEAST COST METHOD
-ASSIGNMENT MODELS-MINIMIZATION MODELS
-ASSIGNMENT MODELS-MAXIMIZATION MODELS
-PROJECT NETWORK ANALYSIS-THE CRITICAL PATH METHOD
-PROJECT NETWORK-PERT
+## 7. SST101: Introduction to Probability & Statistics (Retake)
+Priority Ranking: Targeted Retake Focus (2 touchpoints/week)
+Key Topics & Syllabus:
+- Sample spaces, events, axiomatic probability, conditional probability, Bayes' Theorem
+- Discrete and continuous random variables, probability mass/density functions, CDF
+- Common distributions: Binomial, Poisson, Geometric, Normal, Exponential
+- Expectation, variance, moment generating functions
+- Basic statistical inference, sampling distributions, hypothesis testing
+Suggested Resources: Probability and Statistics for Engineers and Scientists (Walpole et al.); Past CAT and exam papers
 
-## 5. SST203: Database Systems
-Fundamentals of Databases: Definitions of data, information, persistence, and the role of 
-a Database Management System (DBMS).
-Data Modeling: Understanding conceptual frameworks, including Entity-Relationship 
-Diagrams (ERDs) to visualize relationships between data elements.
-Database Design:
-a. Normalization: Techniques used to reduce data redundancy and improve integrity.
-b. Design Levels: Distinguishing between conceptual and logical database design.
-Structured Query Language (SQL): Practical applications of SQL for creating, 
-manipulating, and querying databases. This includes:
-a. CREATE TABLE statements for database construction.
-b. Using string functions like initcap().
-Core Concepts & Attributes:
-a. Keys: Understanding primary keys (unique identifiers) and foreign keys (linkages 
-between tables).
-b. Concurrency Control: Concepts like exclusive vs. shared locks to manage 
-simultaneous data access.
-c. Data Attributes: Handling "Null" values and ensuring data persistence.
-Database Administration (DBA): Roles and responsibilities of a DBA within an 
-organization.
-
-## 6. SST205: Probability & Statistics II
