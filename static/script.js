@@ -274,16 +274,37 @@ function initializeEventListeners() {
     const subjectTipsBtn = document.getElementById('subjectTipsBtn');
     if (subjectTipsBtn) {
         subjectTipsBtn.addEventListener('click', async () => {
-            if (!activeSubjectCode) return;
-            const output = document.getElementById('modalAiOutput');
-            output.innerHTML = '<span style="color: var(--text-muted);">Generating high-yield study tips...</span>';
-            const tips = await getStudyTips(activeSubjectCode);
-            if (!tips || tips.length === 0) {
-                output.textContent = 'No tips available right now.';
+            if (!activeSubjectCode) {
+                showNotification('Please select a subject first.', 'info');
                 return;
             }
-            output.innerHTML = `<strong>AI Subject Guidance:</strong><ul class="modal-tips-list">${tips.map(t => `<li>${formatInlineMarkdown(t)}</li>`).join('')}</ul>`;
-            renderMath(output);
+            const output = document.getElementById('modalAiOutput');
+            if (!output) return;
+
+            const originalHtml = subjectTipsBtn.innerHTML;
+            subjectTipsBtn.disabled = true;
+            subjectTipsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting Tips...';
+
+            output.innerHTML = '<div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.85rem;"><i class="fas fa-spinner fa-spin"></i> Analyzing syllabus & generating high-yield study tips...</div>';
+
+            try {
+                const res = await getStudyTips(activeSubjectCode);
+                if (res.ok && res.tips && res.tips.length > 0) {
+                    output.innerHTML = `<strong>AI Subject Guidance:</strong><ul class="modal-tips-list">${res.tips.map(t => `<li>${formatInlineMarkdown(t)}</li>`).join('')}</ul>`;
+                    renderMath(output);
+                } else if (res.status === 401) {
+                    output.innerHTML = '<div style="color: var(--danger); font-size: 0.85rem;"><i class="fas fa-lock"></i> Session expired. <a href="/login" style="text-decoration: underline; font-weight: 600; color: inherit;">Please log in again</a> to generate AI tips.</div>';
+                } else {
+                    const errMsg = res.error || 'No tips available right now.';
+                    output.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85rem;"><i class="fas fa-exclamation-circle"></i> ${escapeHtml(errMsg)} <button type="button" class="btn btn-sm btn-outline" style="margin-left: 8px; padding: 2px 8px; font-size: 0.75rem;" onclick="document.getElementById('subjectTipsBtn').click()">Retry</button></div>`;
+                }
+            } catch (err) {
+                console.error('Failed to get tips:', err);
+                output.innerHTML = '<div style="color: var(--danger); font-size: 0.85rem;"><i class="fas fa-exclamation-triangle"></i> Network error fetching tips. Please try again.</div>';
+            } finally {
+                subjectTipsBtn.disabled = false;
+                subjectTipsBtn.innerHTML = originalHtml;
+            }
         });
     }
 
@@ -885,7 +906,7 @@ function formatInlineMarkdown(text) {
     
     // If KaTeX is not loaded, convert common LaTeX math inline syntax safely
     if (typeof renderMathInElement !== 'function') {
-        res = res.replace(/\\((.*?)\\)/g, (m, formula) => `<span class="math-expr">${formatMathFallback(formula)}</span>`);
+        res = res.replace(/\\\((.*?)\\\)/g, (m, formula) => `<span class="math-expr">${formatMathFallback(formula)}</span>`);
         res = res.replace(/\$([^\$]+)\$/g, (m, formula) => `<span class="math-expr">${formatMathFallback(formula)}</span>`);
     }
     return res;
@@ -895,15 +916,18 @@ function formatInlineMarkdown(text) {
 
 function renderMath(element) {
     if (!element) return;
+
+    const katexDelimiters = [
+        { left: '$$', right: '$$', display: true },
+        { left: '\\[', right: '\\]', display: true },
+        { left: '\\(', right: '\\)', display: false },
+        { left: '$', right: '$', display: false }
+    ];
+
     if (typeof renderMathInElement === 'function') {
         try {
             renderMathInElement(element, {
-                delimiters: [
-                    { left: '$$', right: '$$', display: true },
-                    { left: '\[', right: '\]', display: true },
-                    { left: '\(', right: '\)', display: false },
-                    { left: '$', right: '$', display: false }
-                ],
+                delimiters: katexDelimiters,
                 throwOnError: false,
                 ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
             });
@@ -913,13 +937,31 @@ function renderMath(element) {
         }
     }
 
+    // If KaTeX script is still loading asynchronously from CDN, schedule retry
+    if (typeof renderMathInElement !== 'function' && typeof window !== 'undefined') {
+        setTimeout(() => {
+            if (typeof renderMathInElement === 'function') {
+                try {
+                    renderMathInElement(element, {
+                        delimiters: katexDelimiters,
+                        throwOnError: false,
+                        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+                    });
+                    return;
+                } catch (e) {}
+            }
+        }, 350);
+    }
+
     // Fallback if KaTeX is not loaded yet
-    element.querySelectorAll('li, p, span, td').forEach(node => {
-        let text = node.innerHTML;
-        if (text.includes('\(') || text.includes('\[') || text.includes('$')) {
-            text = text.replace(/\\((.*?)\\)/g, (m, formula) => `<span class="math-expr">${formatMathFallback(formula)}</span>`);
-            text = text.replace(/\\\[(.*?)\\\]/g, (m, formula) => `<div class="math-expr-block">${formatMathFallback(formula)}</div>`);
-            node.innerHTML = text;
+    element.querySelectorAll('li, p, span, td, div').forEach(node => {
+        if (node.children.length === 0 || node.tagName === 'LI') {
+            let text = node.innerHTML;
+            if (text.includes('\\(') || text.includes('\\[') || text.includes('$')) {
+                text = text.replace(/\\\((.*?)\\\)/g, (m, formula) => `<span class="math-expr">${formatMathFallback(formula)}</span>`);
+                text = text.replace(/\\\[(.*?)\\\]/g, (m, formula) => `<div class="math-expr-block">${formatMathFallback(formula)}</div>`);
+                node.innerHTML = text;
+            }
         }
     });
 }
@@ -1601,13 +1643,20 @@ async function getRecommendations() {
 
 async function getStudyTips(subjectCode) {
     try {
-        const response = await fetch(`/api/ai/tips/${subjectCode}`);
+        const response = await fetch(`/api/ai/tips/${encodeURIComponent(subjectCode)}`);
         const data = await response.json();
-        if (response.ok) return data.tips;
-        return [];
+        if (response.ok && data.tips && Array.isArray(data.tips) && data.tips.length > 0) {
+            return { ok: true, tips: data.tips, status: response.status };
+        }
+        return { 
+            ok: false, 
+            status: response.status, 
+            error: data.error || (response.ok ? 'No tips returned' : `Server responded with status ${response.status}`),
+            tips: [] 
+        };
     } catch (error) {
         console.error('Error fetching study tips:', error);
-        return [];
+        return { ok: false, status: 0, error: 'Network error fetching study tips', tips: [] };
     }
 }
 

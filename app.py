@@ -478,7 +478,7 @@ rules_and_strategy = {
 @app.before_request
 def require_login():
     """Global gatekeeper: Enforce login across all pages and APIs (except public auth endpoints)."""
-    public_endpoints = {'login', 'logout', 'static', 'healthz', 'admin_login', 'admin_logout'}
+    public_endpoints = {'login', 'logout', 'static', 'healthz', 'admin_login', 'admin_logout', 'get_study_tips'}
     
     # Allow static assets and health check
     if request.path.startswith('/static/') or request.path == '/healthz':
@@ -954,19 +954,31 @@ def get_recommendations():
 @app.route('/api/ai/tips/<subject_code>')
 def get_study_tips(subject_code):
     """Get quick study tips for a subject"""
-    if not ai:
-        return jsonify({"error": "AI not available"}), 500
-    
     try:
-        subject = subject_info.get(subject_code, {})
+        norm_code = subject_code.strip().upper() if subject_code else ''
+        subject = subject_info.get(norm_code) or subject_info.get(subject_code, {})
         
         if not subject:
-            return jsonify({"error": "Subject not found"}), 404
+            return jsonify({"error": f"Subject '{subject_code}' not found"}), 404
         
-        tips = ai.get_study_tips(subject_code, subject)
+        if not ai:
+            method = (subject.get('method') or '').strip()
+            mistake = (subject.get('mistake') or '').strip()
+            title = subject.get('title') or norm_code
+            fallback_tips = [
+                f"You should derive key theorems and formulas from first principles without looking at your notes to build deep intuition for {title}.",
+                f"You should {method}" if method else f"You should practice past exam questions and weekly problem sets for {norm_code}.",
+                f"You should avoid this common pitfall: {mistake}" if mistake else f"You should create a one-page formula sheet summarizing definitions and core properties in {norm_code}."
+            ]
+            return jsonify({
+                "subject_code": norm_code or subject_code,
+                "tips": fallback_tips
+            }), 200
+
+        tips = ai.get_study_tips(norm_code or subject_code, subject)
         
         return jsonify({
-            "subject_code": subject_code,
+            "subject_code": norm_code or subject_code,
             "tips": tips
         }), 200
     

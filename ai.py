@@ -7,6 +7,7 @@ from groq import Groq
 import os
 import logging
 import json
+import re
 from datetime import datetime
 
 LOG = logging.getLogger(__name__)
@@ -272,20 +273,17 @@ Keep it concise (2-3 sentences total).
             if subject_info.get('outline'):
                 outline_block = f"Course Outline:\n{subject_info.get('outline')}\n"
 
-            prompt = f"""
-You are speaking directly to a student as an expert study coach. Use "you" throughout your response.
-
-Subject: {subject_code} - {subject_info.get('title', 'Unknown')}
-Key Topics: {subject_info.get('description', '')}
+            prompt = f"""You are speaking directly to a student as an expert academic coach in {subject_code} - {subject_info.get('title', 'Unknown')}.
+Subject Description: {subject_info.get('description', '')}
 {outline_block}
 Provide exactly 3 quick, high-yield, specific study tips for this subject.
-Format as:
+Format each tip on a new line starting with:
 1. You should [first tip]
 2. You should [second tip]
 3. You should [third tip]
 
 Guidelines:
-- When writing mathematical formulas or symbols, use standard LaTeX syntax with \( ... \) for inline expressions (e.g. \(E[\mathbf{{X}}]\), \(\boldsymbol{{\mu}}\), \(\Sigma\)).
+- When writing mathematical formulas, symbols, or notation, use standard LaTeX inline syntax wrapped in \\( ... \\) (e.g. \\(E[\\mathbf{{X}}]\\), \\(\\boldsymbol{{\\mu}}\\), \\(\\Sigma\\), \\(\\varepsilon\\text{{--}}\\delta\\)).
 - Make each tip practical, actionable, and complete without cutting off.
 """
             
@@ -303,23 +301,49 @@ Guidelines:
             
             tips_text = message.choices[0].message.content.strip()
             
-            # Parse tips
+            # Robust parsing of tips
             tips = []
-            for line in tips_text.split('\n'):
-                line = line.strip()
-                if line and (line[0].isdigit() or line.startswith('-')):
-                    # Remove numbering
-                    tip = line.lstrip('0123456789.-) ').strip()
-                    if tip:
-                        tips.append(tip)
+            for raw_line in tips_text.split('\n'):
+                line = raw_line.strip()
+                if not line:
+                    continue
+                # Match numbered or bulleted lines (e.g., "1. ", "**1.** ", "- ", "* ", "• ")
+                cleaned = re.sub(r'^(?:\*{0,2}\d+[\.\)]\*{0,2}|\[\d+\]|[-*•])\s*', '', line).strip()
+                if cleaned and len(cleaned) >= 15:
+                    tips.append(cleaned)
+            
+            # If line-by-line parsing missed tips, try paragraph split
+            if len(tips) < 2:
+                paragraphs = [p.strip() for p in re.split(r'\n\s*\n', tips_text) if p.strip()]
+                for p in paragraphs:
+                    cleaned = re.sub(r'^(?:\*{0,2}\d+[\.\)]\*{0,2}|\[\d+\]|[-*•])\s*', '', p).strip()
+                    if cleaned and len(cleaned) >= 20 and cleaned not in tips:
+                        tips.append(cleaned)
+
+            # Ensure we always return high-yield tips even if formatting was irregular
+            if not tips:
+                method = (subject_info.get('method') or '').strip()
+                mistake = (subject_info.get('mistake') or '').strip()
+                title = subject_info.get('title') or subject_code
+                tips = [
+                    f"You should derive key theorems and formulas from first principles without looking at your notes to build deep intuition for {title}.",
+                    f"You should {method}" if method else f"You should work through past tutorial sheets and exam problems for {subject_code}.",
+                    f"You should avoid this common pitfall: {mistake}" if mistake else f"You should create a one-page formula sheet summarizing definitions and core properties in {subject_code}."
+                ]
             
             LOG.info(f"✓ Generated study tips for {subject_code}")
-            
-            return tips[:3]  # Return max 3 tips
+            return tips[:3]
         
         except Exception as err:
             LOG.error(f"✗ Failed to get study tips: {err}")
-            return ["Keep practicing!", "Review regularly!", "Stay consistent!"]
+            method = (subject_info.get('method') or '').strip()
+            mistake = (subject_info.get('mistake') or '').strip()
+            title = subject_info.get('title') or subject_code
+            return [
+                f"You should derive key theorems and formulas from first principles without looking at your notes to build deep intuition for {title}.",
+                f"You should {method}" if method else f"You should work through past tutorial sheets and exam problems for {subject_code}.",
+                f"You should avoid this common pitfall: {mistake}" if mistake else f"You should create a one-page formula sheet summarizing definitions and core properties in {subject_code}."
+            ]
     
     def analyze_study_pattern(self, weekly_stats):
         """
