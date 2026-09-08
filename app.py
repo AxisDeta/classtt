@@ -76,9 +76,10 @@ def simple_cache(timeout=20):
         return wrapper
     return decorator
 
-# Import database and AI modules
+# Import database, AI, and GitHub storage modules
 from database import init_db, get_db
 from ai import init_ai, get_ai
+from github_storage import GitHubStorageService
 
 # Initialize database and AI
 try:
@@ -94,6 +95,18 @@ try:
 except Exception as err:
     LOG.error(f"✗ AI initialization failed: {err}")
     ai = None
+
+# Initialize GitHub Storage Service for note images and handwritten scans
+github_storage = GitHubStorageService(
+    token=os.getenv('GITHUB_TOKEN'),
+    repo_name=os.getenv('GITHUB_REPO'),
+    branch=os.getenv('GITHUB_BRANCH', 'main'),
+    upload_dir=os.getenv('GITHUB_UPLOAD_DIR', 'study_notes')
+)
+if github_storage.is_configured():
+    LOG.info(f"✓ GitHub storage configured for repo: {github_storage.repo_name}")
+else:
+    LOG.info("ℹ GitHub storage credentials not set in .env (image uploads will prompt for setup)")
 
 
 @lru_cache(maxsize=1)
@@ -1313,6 +1326,145 @@ def evaluate_proof_api():
     subject = subject_info.get(subject_code, {})
     evaluation = ai.evaluate_proof_submission(subject_code, subject, question, student_answer)
     return jsonify({"ok": True, "evaluation": evaluation}), 200
+
+# ==================== COURSE NOTES & GITHUB SCANS ====================
+
+@app.route('/api/notes/<subject_code>', methods=['GET'])
+def get_notes_api(subject_code):
+    """Fetch all notes and image attachments for a subject"""
+    if not db:
+        return jsonify({"notes": [], "github_configured": github_storage.is_configured()}), 200
+
+    norm_code = subject_code.strip().upper() if subject_code else ''
+    topic = request.args.get('topic')
+    notes = db.get_notes_by_subject(norm_code, topic_title=topic)
+
+    # Format dates
+    for n in notes:
+        if hasattr(n.get('created_at'), 'isoformat'):
+            n['created_at'] = n['created_at'].isoformat()
+        if hasattr(n.get('updated_at'), 'isoformat'):
+            n['updated_at'] = n['updated_at'].isoformat()
+        for att in n.get('attachments', []):
+            if hasattr(att.get('created_at'), 'isoformat'):
+                att['created_at'] = att['created_at'].isoformat()
+
+    return jsonify({
+        "ok": True,
+        "subject_code": norm_code,
+        "notes": notes,
+        "count": len(notes),
+        "github_configured": github_storage.is_configured()
+    }), 200
+
+@app.route('/api/notes', methods=['POST'])
+@login_required
+def create_note_api():
+    """Create a course note and upload any attached images/scans to GitHub"""
+    if not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        subject_code = (request.form.get('subject_code') or '').strip().upper()
+        title = (request.form.get('title') or '').strip()
+        topic_title = (request.form.get('topic_title') or '').strip() or None
+        content_markdown = (request.form.get('content_markdown') or '').strip()
+        note_type = (request.form.get('note_type') or 'lecture').strip()
+        uploaded_files = request.files.getlist('images') or request.files.getlist('images[]')
+    else:
+        data = request.get_json() or {}
+        subject_code = (data.get('subject_code') or '').strip().upper()
+        title = (data.get('title') or '').strip()
+        topic_title = (data.get('topic_title') or '').strip() or None
+        content_markdown = (data.get('content_markdown') or '').strip()
+        note_type = (data.get('note_type') or 'lecture').strip()
+        uploaded_files = []
+
+    if not subject_code or not title:
+        return jsonify({"error": "Subject code and title are required"}), 400
+
+    note_id = db.create_note(
+        subject_code=subject_code,
+        title=title,
+        content_markdown=content_markdown,
+        topic_title=topic_title,
+        note_type=note_type
+    )
+
+    if not note_id:
+        return jsonify({"error": "Failed to create note entry"}), 500
+
+    upload_warnings = []
+    if uploaded_files:
+        if not github_storage.is_configured():
+            upload_warnings.append("GitHub credentials not configured in .env. Note saved, but image(s) could not be uploaded.")
+        else:
+            for f in uploaded_files:
+                if f and getattr(f, 'filename', ''):
+                    try:
+                        content_bytes = f.read()
+                        if len(content_bytes) > 0:
+                            res = github_storage.upload_file(content_bytes, filename=f.filename, subdir=subject_code)
+                            if res:
+                                db.add_note_attachment(
+                                    note_id=note_id,
+                                    stored_path=res.stored_path,
+                                    public_url=res.public_url,
+                                    original_filename=f.filename,
+                                    file_size_bytes=len(content_bytes),
+                                    file_type=getattr(f, 'content_type', 'image/jpeg')
+                                )
+                    except Exception as err:
+                        LOG.error(f"Failed to upload image {getattr(f, 'filename', '')}: {err}")
+                        upload_warnings.append(f"Upload failed for {getattr(f, 'filename', 'image')}: {err}")
+
+    full_note = db.get_note_by_id(note_id)
+    if full_note:
+        if hasattr(full_note.get('created_at'), 'isoformat'):
+            full_note['created_at'] = full_note['created_at'].isoformat()
+        if hasattr(full_note.get('updated_at'), 'isoformat'):
+            full_note['updated_at'] = full_note['updated_at'].isoformat()
+        for att in full_note.get('attachments', []):
+            if hasattr(att.get('created_at'), 'isoformat'):
+                att['created_at'] = att['created_at'].isoformat()
+
+    return jsonify({
+        "ok": True,
+        "note": full_note,
+        "upload_warnings": upload_warnings,
+        "github_configured": github_storage.is_configured()
+    }), 201
+
+@app.route('/api/notes/<int:note_id>', methods=['DELETE'])
+@login_required
+def delete_note_api(note_id):
+    """Delete note and remove any associated images from GitHub repo"""
+    if not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    attachments = db.delete_note(note_id)
+    if github_storage.is_configured():
+        for att in attachments:
+            stored_path = att.get('stored_path')
+            if stored_path:
+                github_storage.delete_file(stored_path)
+
+    return jsonify({"ok": True, "deleted": True}), 200
+
+@app.route('/api/notes/attachments/<int:attachment_id>', methods=['DELETE'])
+@login_required
+def delete_attachment_api(attachment_id):
+    """Delete a single image attachment from MySQL and GitHub"""
+    if not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    att = db.delete_note_attachment(attachment_id)
+    if att and github_storage.is_configured():
+        stored_path = att.get('stored_path')
+        if stored_path:
+            github_storage.delete_file(stored_path)
+
+    return jsonify({"ok": True, "deleted": True}), 200
 
 if __name__ == '__main__':
     app.run(

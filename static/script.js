@@ -48,6 +48,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadDueReviews();
     loadAttentionTopics();
     loadMilestones();
+    initSubjectModalTabs();
+    initNotesModule();
 });
 
 // Theme Management
@@ -826,6 +828,8 @@ function showSubjectModal(subjectCode) {
     document.getElementById('modalSchedule').innerHTML = schedule;
     document.getElementById('modalAiOutput').textContent = 'Use the AI button above for personalized tips and exam preparation guidance.';
     loadSubjectTopics(subjectCode);
+    switchModalTab('syllabus');
+    loadSubjectNotes(subjectCode, false);
     modal.classList.add('active');
     renderMath(modal);
 }
@@ -2133,6 +2137,7 @@ function initKeyboardShortcuts() {
         } else if (e.key === 'Escape') {
             const activeModals = document.querySelectorAll('.modal.active');
             activeModals.forEach(m => m.classList.remove('active'));
+            closeLightbox();
         }
     });
 }
@@ -2696,4 +2701,453 @@ async function handleMilestoneSubmit(e) {
             submitBtn.textContent = 'Save Exam Target';
         }
     }
+}
+
+
+// ==================== COURSE NOTES & GITHUB-BACKED SCANS ====================
+
+let currentSubjectNotes = [];
+let stagedNoteFiles = [];
+
+function initSubjectModalTabs() {
+    const btnSyllabus = document.getElementById('tabBtnSyllabus');
+    const btnNotes = document.getElementById('tabBtnNotes');
+
+    if (btnSyllabus) {
+        btnSyllabus.addEventListener('click', () => switchModalTab('syllabus'));
+    }
+    if (btnNotes) {
+        btnNotes.addEventListener('click', () => {
+            switchModalTab('notes');
+            if (activeSubjectCode) {
+                loadSubjectNotes(activeSubjectCode);
+                populateNoteTopicDropdown(activeSubjectCode);
+            }
+        });
+    }
+}
+
+function switchModalTab(tabName) {
+    const btnSyllabus = document.getElementById('tabBtnSyllabus');
+    const btnNotes = document.getElementById('tabBtnNotes');
+    const paneSyllabus = document.getElementById('subjectTabSyllabus');
+    const paneNotes = document.getElementById('subjectTabNotes');
+
+    if (!btnSyllabus || !btnNotes || !paneSyllabus || !paneNotes) return;
+
+    if (tabName === 'notes') {
+        btnNotes.classList.add('active');
+        btnSyllabus.classList.remove('active');
+        paneNotes.classList.remove('hidden');
+        paneSyllabus.classList.add('hidden');
+    } else {
+        btnSyllabus.classList.add('active');
+        btnNotes.classList.remove('active');
+        paneSyllabus.classList.remove('hidden');
+        paneNotes.classList.add('hidden');
+    }
+}
+
+function initNotesModule() {
+    // Note composer toggle
+    const toggleBtn = document.getElementById('noteComposerToggle');
+    const form = document.getElementById('newNoteForm');
+    const icon = document.getElementById('composerIcon');
+    const cancelBtn = document.getElementById('cancelNoteBtn');
+
+    if (toggleBtn && form) {
+        toggleBtn.addEventListener('click', () => {
+            const isHidden = form.classList.toggle('hidden');
+            if (icon) icon.textContent = isHidden ? '+' : '−';
+            if (!isHidden) {
+                const titleInput = document.getElementById('noteTitle');
+                if (titleInput) titleInput.focus();
+            }
+        });
+    }
+
+    if (cancelBtn && form) {
+        cancelBtn.addEventListener('click', () => {
+            form.classList.add('hidden');
+            if (icon) icon.textContent = '+';
+            form.reset();
+            stagedNoteFiles = [];
+            renderStagedFiles();
+        });
+    }
+
+    // Dropzone & File Input
+    const dropzone = document.getElementById('noteImageDropzone');
+    const fileInput = document.getElementById('noteFileInput');
+
+    if (dropzone && fileInput) {
+        dropzone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                stageFiles(e.target.files);
+                fileInput.value = '';
+            }
+        });
+
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                stageFiles(e.dataTransfer.files);
+            }
+        });
+    }
+
+    // Global Clipboard Paste Listener (Ctrl+V)
+    window.addEventListener('paste', (e) => {
+        const modal = document.getElementById('subjectModal');
+        if (!modal || !modal.classList.contains('active')) return;
+
+        const items = (e.clipboardData || window.clipboardData).items;
+        if (!items) return;
+
+        let hasImage = false;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const blob = items[i].getAsFile();
+                if (blob) {
+                    const ext = blob.type.split('/')[1] || 'png';
+                    const filename = `clipboard_scan_${Date.now()}.${ext}`;
+                    const file = new File([blob], filename, { type: blob.type });
+                    stageFiles([file]);
+                    hasImage = true;
+                }
+            }
+        }
+
+        if (hasImage) {
+            switchModalTab('notes');
+            if (form && form.classList.contains('hidden')) {
+                form.classList.remove('hidden');
+                if (icon) icon.textContent = '−';
+            }
+            showNotification('Image pasted from clipboard!', 'info');
+        }
+    });
+
+    // Form submit
+    if (form) {
+        form.addEventListener('submit', handleNoteSubmit);
+    }
+
+    // Search & Filter
+    const searchInput = document.getElementById('notesSearchInput');
+    const topicFilter = document.getElementById('notesTopicFilter');
+
+    if (searchInput) {
+        searchInput.addEventListener('input', () => filterAndRenderNotes());
+    }
+    if (topicFilter) {
+        topicFilter.addEventListener('change', () => filterAndRenderNotes());
+    }
+
+    // Lightbox modal close
+    const lightboxModal = document.getElementById('imageLightboxModal');
+    const lightboxClose = document.getElementById('lightboxClose');
+
+    if (lightboxClose && lightboxModal) {
+        lightboxClose.addEventListener('click', closeLightbox);
+        lightboxModal.addEventListener('click', (e) => {
+            if (e.target === lightboxModal) closeLightbox();
+        });
+    }
+}
+
+function stageFiles(fileList) {
+    for (let i = 0; i < fileList.length; i++) {
+        const f = fileList[i];
+        if (f.type.startsWith('image/')) {
+            stagedNoteFiles.push(f);
+        } else {
+            showNotification(`Skipped non-image file: ${f.name}`, 'info');
+        }
+    }
+    renderStagedFiles();
+}
+
+function renderStagedFiles() {
+    const container = document.getElementById('stagedImagesList');
+    if (!container) return;
+
+    container.innerHTML = '';
+    stagedNoteFiles.forEach((file, idx) => {
+        const pill = document.createElement('div');
+        pill.className = 'staged-img-pill';
+
+        const imgUrl = URL.createObjectURL(file);
+        pill.innerHTML = `
+            <img src="${imgUrl}" class="staged-img-thumb" alt="Preview">
+            <span class="staged-img-name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+            <button type="button" class="staged-img-remove" title="Remove image">✕</button>
+        `;
+
+        pill.querySelector('.staged-img-remove').addEventListener('click', (e) => {
+            e.stopPropagation();
+            stagedNoteFiles.splice(idx, 1);
+            renderStagedFiles();
+        });
+
+        container.appendChild(pill);
+    });
+}
+
+function populateNoteTopicDropdown(subjectCode) {
+    const select = document.getElementById('noteTopicSelect');
+    const filterSelect = document.getElementById('notesTopicFilter');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">General Subject Note</option>';
+    if (filterSelect) filterSelect.innerHTML = '<option value="">All Topics</option>';
+
+    // Fetch topics if not cached
+    fetch(`/api/topics/${subjectCode}`)
+        .then(res => res.json())
+        .then(data => {
+            const topics = data.topics || [];
+            topics.forEach(t => {
+                const opt1 = document.createElement('option');
+                opt1.value = t.title;
+                opt1.textContent = t.title;
+                select.appendChild(opt1);
+
+                if (filterSelect) {
+                    const opt2 = document.createElement('option');
+                    opt2.value = t.title;
+                    opt2.textContent = t.title;
+                    filterSelect.appendChild(opt2);
+                }
+            });
+        })
+        .catch(err => console.warn('Could not populate note topics dropdown:', err));
+}
+
+async function loadSubjectNotes(subjectCode, renderImmediately = true) {
+    const badge = document.getElementById('modalNotesCountBadge');
+    const feed = document.getElementById('subjectNotesFeed');
+    const notice = document.getElementById('notesGithubNotice');
+
+    try {
+        const res = await fetch(`/api/notes/${subjectCode}`);
+        const data = await res.json();
+        if (res.ok) {
+            currentSubjectNotes = data.notes || [];
+            if (badge) badge.textContent = currentSubjectNotes.length;
+
+            if (notice) {
+                if (!data.github_configured) {
+                    notice.classList.remove('hidden');
+                } else {
+                    notice.classList.add('hidden');
+                }
+            }
+
+            if (renderImmediately && feed) {
+                filterAndRenderNotes();
+            }
+        }
+    } catch (err) {
+        console.error('Failed to load subject notes:', err);
+    }
+}
+
+function filterAndRenderNotes() {
+    const feed = document.getElementById('subjectNotesFeed');
+    const searchInput = document.getElementById('notesSearchInput');
+    const topicFilter = document.getElementById('notesTopicFilter');
+    if (!feed) return;
+
+    const query = (searchInput ? searchInput.value.trim().toLowerCase() : '');
+    const selectedTopic = (topicFilter ? topicFilter.value : '');
+
+    const filtered = currentSubjectNotes.filter(n => {
+        const matchesTopic = !selectedTopic || (n.topic_title === selectedTopic);
+        const matchesQuery = !query ||
+            (n.title && n.title.toLowerCase().includes(query)) ||
+            (n.content_markdown && n.content_markdown.toLowerCase().includes(query)) ||
+            (n.topic_title && n.topic_title.toLowerCase().includes(query));
+        return matchesTopic && matchesQuery;
+    });
+
+    if (filtered.length === 0) {
+        feed.innerHTML = `
+            <div style="padding: 24px; text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
+                <p>No notes or scans found${selectedTopic || query ? ' matching your filters' : ''}.</p>
+                <p style="font-size: 0.8rem; margin-top: 4px;">Click <strong>✍️ Add Note or Upload Scanned Pages</strong> above to save your first handwritten derivation!</p>
+            </div>
+        `;
+        return;
+    }
+
+    feed.innerHTML = '';
+    filtered.forEach(note => {
+        const card = document.createElement('div');
+        card.className = 'note-card';
+
+        const dateStr = note.created_at ? new Date(note.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+
+        let attachmentsHtml = '';
+        if (note.attachments && note.attachments.length > 0) {
+            attachmentsHtml = `<div class="note-gallery-grid">`;
+            note.attachments.forEach(att => {
+                attachmentsHtml += `
+                    <div class="note-thumbnail-wrap" data-img-url="${escapeHtml(att.public_url)}" data-caption="${escapeHtml(note.title)} - ${escapeHtml(att.original_filename)}">
+                        <img src="${escapeHtml(att.public_url)}" class="note-thumbnail" alt="${escapeHtml(att.original_filename)}" loading="lazy">
+                        <span class="note-thumbnail-badge">🔍 View</span>
+                    </div>
+                `;
+            });
+            attachmentsHtml += `</div>`;
+        }
+
+        card.innerHTML = `
+            <div class="note-card-header">
+                <div class="note-title-wrap">
+                    <h4 class="note-card-title">${escapeHtml(note.title)}</h4>
+                    <div class="note-meta-row">
+                        <span class="note-type-tag">${escapeHtml(note.note_type || 'lecture')}</span>
+                        ${note.topic_title ? `<span class="note-topic-tag">${escapeHtml(note.topic_title)}</span>` : ''}
+                        <span>• ${dateStr}</span>
+                        ${note.attachments ? `<span>• 📷 ${note.attachments.length} scan${note.attachments.length === 1 ? '' : 's'}</span>` : ''}
+                    </div>
+                </div>
+                <button type="button" class="note-del-btn" title="Delete note">🗑️ Delete</button>
+            </div>
+            ${note.content_markdown ? `<div class="note-content-body">${formatTextForDisplay(note.content_markdown)}</div>` : ''}
+            ${attachmentsHtml}
+        `;
+
+        // Delete note button
+        card.querySelector('.note-del-btn').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete note "${note.title}" and any attached scans?`)) {
+                await deleteNote(note.id);
+            }
+        });
+
+        // Lightbox thumbnails
+        card.querySelectorAll('.note-thumbnail-wrap').forEach(wrap => {
+            wrap.addEventListener('click', () => {
+                openLightbox(wrap.dataset.imgUrl, wrap.dataset.caption);
+            });
+        });
+
+        feed.appendChild(card);
+    });
+
+    renderMath(feed);
+}
+
+async function handleNoteSubmit(e) {
+    e.preventDefault();
+
+    const titleInput = document.getElementById('noteTitle');
+    const topicSelect = document.getElementById('noteTopicSelect');
+    const typeSelect = document.getElementById('noteTypeSelect');
+    const contentText = document.getElementById('noteContent');
+    const submitBtn = document.getElementById('saveNoteBtn');
+    const form = document.getElementById('newNoteForm');
+
+    const title = titleInput ? titleInput.value.trim() : '';
+    if (!title) {
+        showNotification('Please provide a note title', 'error');
+        return;
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Uploading to GitHub & Saving...';
+    }
+
+    const formData = new FormData();
+    formData.append('subject_code', activeSubjectCode);
+    formData.append('title', title);
+    formData.append('topic_title', topicSelect ? topicSelect.value : '');
+    formData.append('note_type', typeSelect ? typeSelect.value : 'lecture');
+    formData.append('content_markdown', contentText ? contentText.value : '');
+
+    stagedNoteFiles.forEach(file => {
+        formData.append('images', file);
+    });
+
+    try {
+        const res = await fetch('/api/notes', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            showNotification('Note and scans saved successfully!', 'success');
+            if (data.upload_warnings && data.upload_warnings.length > 0) {
+                showNotification(data.upload_warnings[0], 'info');
+            }
+            form.reset();
+            stagedNoteFiles = [];
+            renderStagedFiles();
+            form.classList.add('hidden');
+            const icon = document.getElementById('composerIcon');
+            if (icon) icon.textContent = '+';
+            await loadSubjectNotes(activeSubjectCode);
+        } else {
+            showNotification(data.error || 'Failed to save note', 'error');
+        }
+    } catch (err) {
+        console.error('Error saving note:', err);
+        showNotification('Network error saving note', 'error');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Save Note & Upload Scans';
+        }
+    }
+}
+
+async function deleteNote(noteId) {
+    try {
+        const res = await fetch(`/api/notes/${noteId}`, { method: 'DELETE' });
+        if (res.ok) {
+            showNotification('Note deleted', 'info');
+            await loadSubjectNotes(activeSubjectCode);
+        } else {
+            const data = await res.json();
+            showNotification(data.error || 'Failed to delete note', 'error');
+        }
+    } catch (err) {
+        console.error('Error deleting note:', err);
+        showNotification('Network error deleting note', 'error');
+    }
+}
+
+function openLightbox(imgUrl, caption) {
+    const modal = document.getElementById('imageLightboxModal');
+    const img = document.getElementById('lightboxImage');
+    const cap = document.getElementById('lightboxCaption');
+
+    if (!modal || !img) return;
+
+    img.src = imgUrl;
+    if (cap) cap.textContent = caption || '';
+    modal.classList.add('active');
+}
+
+function closeLightbox() {
+    const modal = document.getElementById('imageLightboxModal');
+    const img = document.getElementById('lightboxImage');
+    if (modal) modal.classList.remove('active');
+    if (img) img.src = '';
 }

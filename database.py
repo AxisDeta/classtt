@@ -209,6 +209,39 @@ class DatabaseManager:
                 INDEX idx_milestone_date (target_date)
             )
             """)
+
+            # Course Notes & Scans
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS studytt_notes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL DEFAULT 1,
+                subject_code VARCHAR(20) NOT NULL,
+                topic_title VARCHAR(255) NULL,
+                title VARCHAR(255) NOT NULL,
+                content_markdown LONGTEXT NULL,
+                note_type VARCHAR(50) NOT NULL DEFAULT 'lecture',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_subj_notes (subject_code),
+                INDEX idx_topic_notes (topic_title)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Note Image / Scan Attachments (GitHub-backed)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS studytt_note_attachments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                note_id INT NOT NULL,
+                stored_path VARCHAR(500) NOT NULL,
+                public_url VARCHAR(1000) NOT NULL,
+                original_filename VARCHAR(255) NOT NULL,
+                file_size_bytes INT NOT NULL DEFAULT 0,
+                file_type VARCHAR(100) NOT NULL DEFAULT 'image/jpeg',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_att_note_id (note_id),
+                FOREIGN KEY (note_id) REFERENCES studytt_notes(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
             
             conn.commit()
             cursor.close()
@@ -1177,6 +1210,169 @@ class DatabaseManager:
         except mysql.connector.Error as err:
             LOG.error(f"✗ Failed to delete milestone {milestone_id}: {err}")
             return False
+
+    # ==================== COURSE NOTES & SCANS ====================
+
+    def create_note(self, subject_code, title, content_markdown, topic_title=None, note_type='lecture'):
+        """Create a new course note entry and return its ID"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO studytt_notes (user_id, subject_code, topic_title, title, content_markdown, note_type)
+                VALUES (1, %s, %s, %s, %s, %s)
+            """, (subject_code, topic_title or None, title, content_markdown or '', note_type))
+            conn.commit()
+            note_id = cursor.lastrowid
+            cursor.close()
+            conn.close()
+            return note_id
+        except mysql.connector.Error as err:
+            LOG.error(f"✗ Failed to create note for {subject_code}: {err}")
+            return None
+
+    def add_note_attachment(self, note_id, stored_path, public_url, original_filename, file_size_bytes=0, file_type='image/jpeg'):
+        """Attach an image or scan (GitHub-backed) to a note"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO studytt_note_attachments
+                (note_id, stored_path, public_url, original_filename, file_size_bytes, file_type)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (note_id, stored_path, public_url, original_filename, file_size_bytes, file_type))
+            conn.commit()
+            att_id = cursor.lastrowid
+            cursor.close()
+            conn.close()
+            return att_id
+        except mysql.connector.Error as err:
+            LOG.error(f"✗ Failed to add attachment to note {note_id}: {err}")
+            return None
+
+    def get_notes_by_subject(self, subject_code, topic_title=None):
+        """Get all notes for a subject with their attached scans/images"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(dictionary=True)
+
+            if topic_title:
+                cursor.execute("""
+                    SELECT id, user_id, subject_code, topic_title, title, content_markdown, note_type,
+                           created_at, updated_at
+                    FROM studytt_notes
+                    WHERE subject_code = %s AND topic_title = %s
+                    ORDER BY created_at DESC
+                """, (subject_code, topic_title))
+            else:
+                cursor.execute("""
+                    SELECT id, user_id, subject_code, topic_title, title, content_markdown, note_type,
+                           created_at, updated_at
+                    FROM studytt_notes
+                    WHERE subject_code = %s
+                    ORDER BY created_at DESC
+                """, (subject_code,))
+
+            notes = cursor.fetchall()
+
+            if notes:
+                note_ids = [n['id'] for n in notes]
+                format_strings = ','.join(['%s'] * len(note_ids))
+                cursor.execute(f"""
+                    SELECT id, note_id, stored_path, public_url, original_filename, file_size_bytes, file_type, created_at
+                    FROM studytt_note_attachments
+                    WHERE note_id IN ({format_strings})
+                    ORDER BY created_at ASC
+                """, tuple(note_ids))
+                attachments = cursor.fetchall()
+
+                # Group attachments by note_id
+                att_by_note = {}
+                for att in attachments:
+                    nid = att['note_id']
+                    if nid not in att_by_note:
+                        att_by_note[nid] = []
+                    att_by_note[nid].append(att)
+
+                for n in notes:
+                    n['attachments'] = att_by_note.get(n['id'], [])
+            else:
+                for n in notes:
+                    n['attachments'] = []
+
+            cursor.close()
+            conn.close()
+            return notes
+        except mysql.connector.Error as err:
+            LOG.error(f"✗ Failed to fetch notes for {subject_code}: {err}")
+            return []
+
+    def get_note_by_id(self, note_id):
+        """Get a single note with its attachments"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT id, user_id, subject_code, topic_title, title, content_markdown, note_type,
+                       created_at, updated_at
+                FROM studytt_notes
+                WHERE id = %s
+            """, (note_id,))
+            note = cursor.fetchone()
+            if note:
+                cursor.execute("""
+                    SELECT id, note_id, stored_path, public_url, original_filename, file_size_bytes, file_type, created_at
+                    FROM studytt_note_attachments
+                    WHERE note_id = %s
+                    ORDER BY created_at ASC
+                """, (note_id,))
+                note['attachments'] = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            return note
+        except mysql.connector.Error as err:
+            LOG.error(f"✗ Failed to fetch note {note_id}: {err}")
+            return None
+
+    def delete_note(self, note_id):
+        """Delete note and return list of attachments so GitHub files can be deleted"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            # First fetch attachments for external cleanup
+            cursor.execute("""
+                SELECT id, stored_path, public_url FROM studytt_note_attachments WHERE note_id = %s
+            """, (note_id,))
+            attachments = cursor.fetchall()
+
+            cursor.execute("DELETE FROM studytt_notes WHERE id = %s", (note_id,))
+            conn.commit()
+            deleted = cursor.rowcount > 0
+            cursor.close()
+            conn.close()
+            return attachments if deleted else []
+        except mysql.connector.Error as err:
+            LOG.error(f"✗ Failed to delete note {note_id}: {err}")
+            return []
+
+    def delete_note_attachment(self, attachment_id):
+        """Delete a single attachment and return its stored_path"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT id, stored_path, public_url FROM studytt_note_attachments WHERE id = %s
+            """, (attachment_id,))
+            att = cursor.fetchone()
+            if att:
+                cursor.execute("DELETE FROM studytt_note_attachments WHERE id = %s", (attachment_id,))
+                conn.commit()
+            cursor.close()
+            conn.close()
+            return att
+        except mysql.connector.Error as err:
+            LOG.error(f"✗ Failed to delete attachment {attachment_id}: {err}")
+            return None
 
 # Initialize global database manager
 db = None
