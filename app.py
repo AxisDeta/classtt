@@ -97,24 +97,30 @@ except Exception as err:
 @lru_cache(maxsize=1)
 def load_course_outlines():
     outlines = {}
-    outlines_path = os.path.join(os.path.dirname(__file__), 'courseoutlines.md')
-    if not os.path.exists(outlines_path):
+    possible_paths = [
+        os.path.join(os.path.dirname(__file__), 'courseoutlines.md'),
+        os.path.join(os.path.dirname(__file__), 'CourseOutlines.md'),
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), 'CourseOutlines.md')
+    ]
+    outlines_path = None
+    for p in possible_paths:
+        if os.path.exists(p):
+            outlines_path = p
+            break
+
+    if not outlines_path:
         return outlines
 
     with open(outlines_path, 'r', encoding='utf-8') as f:
         current = None
         buffer = []
         for raw_line in f:
-            line = raw_line.rstrip('\n')
-            if line.startswith('##'):
+            line = raw_line.rstrip('\r\n')
+            match = re.match(r'^(?:#+)?\s*(?:\d+\.\s*)?([A-Za-z]{3}\s*\d{3})\b(?::?\s*(.*))?', line.strip())
+            if match and ('SST' in line.upper() or 'SMA' in line.upper()) and line.strip().startswith('#'):
                 if current:
                     outlines[current] = '\n'.join(buffer).strip()
-                heading = line.lstrip('#').strip()
-                match = re.match(r'(?:\d+\.\s*)?([A-Z0-9 ]+):\s*(.+)', heading)
-                if match:
-                    current = match.group(1).replace(' ', '')
-                else:
-                    current = heading
+                current = match.group(1).replace(' ', '').upper()
                 buffer = []
             else:
                 if current is not None:

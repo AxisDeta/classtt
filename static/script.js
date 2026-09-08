@@ -914,23 +914,158 @@ function renderRecommendations(rows) {
     });
 }
 
+function formatInlineMarkdown(text) {
+    if (!text) return '';
+    let res = escapeHtml(text);
+    // Bold
+    res = res.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    // Italic
+    res = res.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    // Inline code
+    res = res.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // LaTeX math symbols
+    res = res.replace(/\\mathfrak\{R\}/g, 'ℝ');
+    res = res.replace(/\\underline\{([A-Za-z0-9_]+)\}/g, '<span class="math-vector">$1</span>');
+    res = res.replace(/\\Sigma/g, 'Σ');
+    res = res.replace(/\\mu/g, 'μ');
+    res = res.replace(/\\sigma/g, 'σ');
+    res = res.replace(/\\alpha/g, 'α');
+    res = res.replace(/\\beta/g, 'β');
+    res = res.replace(/\\epsilon/g, 'ε');
+    res = res.replace(/\\delta/g, 'δ');
+    res = res.replace(/\\theta/g, 'θ');
+    res = res.replace(/\\phi/g, 'ϕ');
+    res = res.replace(/\\le/g, '≤');
+    res = res.replace(/\\ge/g, '≥');
+    res = res.replace(/\\neq/g, '≠');
+    res = res.replace(/\\pm/g, '±');
+    res = res.replace(/\\times/g, '×');
+    res = res.replace(/\\div/g, '÷');
+    res = res.replace(/\\to/g, '→');
+    res = res.replace(/\\infty/g, '∞');
+    res = res.replace(/\\partial/g, '∂');
+    res = res.replace(/\\int/g, '∫');
+    res = res.replace(/\\sum/g, '∑');
+    res = res.replace(/\\cup/g, '∪');
+    res = res.replace(/\\cap/g, '∩');
+    res = res.replace(/\\subset/g, '⊂');
+    res = res.replace(/\\in/g, '∈');
+    res = res.replace(/\\sup/g, 'sup');
+    res = res.replace(/\\inf/g, 'inf');
+    res = res.replace(/\\lim/g, 'lim');
+    res = res.replace(/\\sqrt\[(\w+)\]\{([^}]+)\}/g, '$1√($2)');
+    res = res.replace(/\\sqrt\{([^}]+)\}/g, '√($1)');
+    res = res.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)');
+    // Math expression wrapping
+    res = res.replace(/\$([^\$]+)\$/g, '<span class="math-expr">$1</span>');
+    return res;
+}
+
 function formatTextForDisplay(text) {
     if (!text) return '';
     const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const lines = normalized.split('\n').map(line => line.trim()).filter(Boolean);
-    
-    const convertMarkdown = (line) => line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    const lines = normalized.split('\n');
     
     let html = '';
-    lines.forEach(line => {
-        const converted = convertMarkdown(line);
-        if (/^•|^[-*]\s+|^\d+\./.test(line)) {
-            html += `<div class="formatted-list-item">${converted}</div>`;
-        } else {
-            html += `<p>${converted}</p>`;
+    let inTable = false;
+    let tableHeader = [];
+    let tableRows = [];
+    let inList = false;
+    let listItems = [];
+
+    const flushList = () => {
+        if (inList && listItems.length > 0) {
+            html += `<ul class="modal-outline-list">${listItems.map(item => `<li>${item}</li>`).join('')}</ul>`;
+            listItems = [];
+            inList = false;
         }
-    });
-    
+    };
+
+    const flushTable = () => {
+        if (inTable && tableHeader.length > 0) {
+            html += `<div class="table-responsive"><table class="outline-table"><thead><tr>`;
+            html += tableHeader.map(h => `<th>${formatInlineMarkdown(h)}</th>`).join('');
+            html += `</tr></thead><tbody>`;
+            tableRows.forEach(row => {
+                html += `<tr>${row.map(cell => `<td>${formatInlineMarkdown(cell)}</td>`).join('')}</tr>`;
+            });
+            html += `</tbody></table></div>`;
+            tableHeader = [];
+            tableRows = [];
+            inTable = false;
+        }
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+        const rawLine = lines[i];
+        const trimmed = rawLine.trim();
+
+        if (!trimmed) {
+            flushList();
+            flushTable();
+            continue;
+        }
+
+        // Table line
+        if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+            flushList();
+            const cells = trimmed.split('|').slice(1, -1).map(c => c.trim());
+            // Check delimiter row
+            if (cells.every(c => /^:?-+:?$/.test(c))) {
+                continue;
+            }
+            if (!inTable) {
+                inTable = true;
+                tableHeader = cells;
+            } else {
+                tableRows.push(cells);
+            }
+            continue;
+        } else {
+            flushTable();
+        }
+
+        // Module / Lesson Headings (###)
+        if (/^#{1,4}\s+/.test(trimmed)) {
+            flushList();
+            const headingText = trimmed.replace(/^#{1,4}\s+/, '').replace(/\*\*/g, '');
+            html += `<div class="outline-module-header">
+                <span class="module-indicator"></span>
+                <h5>${escapeHtml(headingText)}</h5>
+            </div>`;
+            continue;
+        }
+
+        // Horizontal rule
+        if (/^---+$/.test(trimmed)) {
+            flushList();
+            html += `<hr class="outline-divider" />`;
+            continue;
+        }
+
+        // List item: * or - or • or 1.
+        if (/^\s*([*•-]|(?:\d+\.))\s+/.test(rawLine)) {
+            inList = true;
+            const isSubItem = /^\s{4,}/.test(rawLine);
+            const content = trimmed.replace(/^([*•-]|(?:\d+\.))\s+/, '');
+            const formatted = formatInlineMarkdown(content);
+            if (isSubItem) {
+                listItems.push(`<div class="outline-sub-item">${formatted}</div>`);
+            } else {
+                listItems.push(formatted);
+            }
+            continue;
+        } else {
+            flushList();
+        }
+
+        // Normal paragraph
+        html += `<p class="outline-paragraph">${formatInlineMarkdown(trimmed)}</p>`;
+    }
+
+    flushList();
+    flushTable();
+
     return html;
 }
 

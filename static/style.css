@@ -3258,3 +3258,146 @@ html[data-theme="dark"] .task-card-done {
         max-width: none;
     }
 }
+
+/* ==========================================================================
+   Course Outline & Syllabus Rich Formatting
+   ========================================================================== */
+.modal-outline {
+    margin: 1rem 0;
+    padding: 1.25rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    line-height: 1.6;
+    max-height: 480px;
+    overflow-y: auto;
+}
+
+.modal-outline::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-outline::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.outline-module-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 1.1rem 0 0.5rem 0;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.outline-module-header:first-child {
+    margin-top: 0.25rem;
+}
+
+.outline-module-header h5 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.module-indicator {
+    width: 6px;
+    height: 16px;
+    background: var(--primary);
+    border-radius: 3px;
+    display: inline-block;
+}
+
+.modal-outline-list {
+    margin: 0.4rem 0 0.8rem 1rem;
+    padding-left: 0.75rem;
+}
+
+.modal-outline-list li {
+    margin-bottom: 0.35rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.modal-outline-list li strong {
+    color: var(--text-primary);
+}
+
+.outline-sub-item {
+    margin: 0.25rem 0 0.35rem 0.75rem;
+    padding-left: 0.5rem;
+    border-left: 2px solid var(--border-color);
+    color: var(--text-muted);
+    font-size: 0.84rem;
+}
+
+.outline-paragraph {
+    margin-bottom: 0.6rem;
+    color: var(--text-secondary);
+}
+
+.outline-divider {
+    border: none;
+    border-top: 1px dashed var(--border-color);
+    margin: 1rem 0;
+}
+
+/* Outline Tables (for SST301, etc.) */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    margin: 0.75rem 0;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+}
+
+.outline-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    text-align: left;
+    background: var(--bg-card);
+}
+
+.outline-table th {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-weight: 600;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.outline-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    vertical-align: top;
+}
+
+.outline-table tr:last-child td {
+    border-bottom: none;
+}
+
+.outline-table tr:hover td {
+    background: rgba(99, 102, 241, 0.04);
+}
+
+.math-vector {
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+.math-expr {
+    font-family: "Fira Code", "Courier New", monospace;
+    font-size: 0.86em;
+    background: rgba(99, 102, 241, 0.08);
+    padding: 1px 4px;
+    border-radius: 4px;
+    color: var(--primary);
+}
