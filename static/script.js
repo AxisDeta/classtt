@@ -2182,9 +2182,9 @@ function renderTopicMasteryList(subjectCode, topics) {
                 ${t.description ? `<div class="topic-desc">${formatInlineMarkdown(t.description)}</div>` : ''}
             </div>
             <div class="topic-status-pills">
-                <button type="button" class="status-pill-btn pill-needs-work ${t.status === \'needs-work\' ? \'active\' : \'\'}" data-status="needs-work" title="Mark as Needs Work">Needs Work</button>
-                <button type="button" class="status-pill-btn pill-reviewing ${t.status === \'reviewing\' ? \'active\' : \'\'}" data-status="reviewing" title="Mark as Reviewing">Reviewing</button>
-                <button type="button" class="status-pill-btn pill-mastered ${t.status === \'mastered\' ? \'active\' : \'\'}" data-status="mastered" title="Mark as Mastered">Mastered</button>
+                <button type="button" class="status-pill-btn pill-needs-work ${t.status === 'needs-work' ? 'active' : ''}" data-status="needs-work" title="Mark as Needs Work">Needs Work</button>
+                <button type="button" class="status-pill-btn pill-reviewing ${t.status === 'reviewing' ? 'active' : ''}" data-status="reviewing" title="Mark as Reviewing">Reviewing</button>
+                <button type="button" class="status-pill-btn pill-mastered ${t.status === 'mastered' ? 'active' : ''}" data-status="mastered" title="Mark as Mastered">Mastered</button>
             </div>
         `;
 

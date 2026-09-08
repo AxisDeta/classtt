@@ -285,15 +285,22 @@ body {
     border-color: var(--border-hover);
 }
 
-.sun-icon, .moon-icon {
+.sun-icon {
+    display: none;
     width: 16px;
     height: 16px;
 }
 
-html[data-theme="dark"] .sun-icon { display: block; }
-html[data-theme="dark"] .moon-icon { display: none; }
-html[data-theme="light"] .sun-icon { display: none; }
-html[data-theme="light"] .moon-icon { display: block; }
+.moon-icon {
+    display: block;
+    width: 16px;
+    height: 16px;
+}
+
+html[data-theme="dark"] .sun-icon { display: block !important; }
+html[data-theme="dark"] .moon-icon { display: none !important; }
+html[data-theme="light"] .sun-icon { display: none !important; }
+html[data-theme="light"] .moon-icon { display: block !important; }
 
 .header-subtitle {
     margin-top: 0.5rem;
