@@ -418,17 +418,17 @@ function initializeEventListeners() {
                 });
                 if (res.ok) {
                     showNotification('Added to 3-day spaced recall queue!', 'success');
-                    evalScheduleReviewBtn.textContent = '✓ Scheduled for Recall';
+                    evalScheduleReviewBtn.innerHTML = '<svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"vertical-align: -2px; margin-right: 4px; color: var(--success);\"><polyline points=\"20 6 9 17 4 12\"></polyline></svg>Scheduled for Recall';
                     loadDueReviews();
                 } else {
                     showNotification('Failed to schedule review', 'error');
                     evalScheduleReviewBtn.disabled = false;
-                    evalScheduleReviewBtn.textContent = '📌 Add to Spaced Review Queue';
+                    evalScheduleReviewBtn.innerHTML = '<svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"vertical-align: -2px; margin-right: 4px;\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\" ry=\"2\"></rect><line x1=\"16\" y1=\"2\" x2=\"16\" y2=\"6\"></line><line x1=\"8\" y1=\"2\" x2=\"8\" y2=\"6\"></line><line x1=\"3\" y1=\"10\" x2=\"21\" y2=\"10\"></line></svg>Add to Spaced Review Queue';
                 }
             } catch (err) {
                 showNotification('Network error scheduling review', 'error');
                 evalScheduleReviewBtn.disabled = false;
-                evalScheduleReviewBtn.textContent = '📌 Add to Spaced Review Queue';
+                evalScheduleReviewBtn.innerHTML = '<svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"vertical-align: -2px; margin-right: 4px;\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\" ry=\"2\"></rect><line x1=\"16\" y1=\"2\" x2=\"16\" y2=\"6\"></line><line x1=\"8\" y1=\"2\" x2=\"8\" y2=\"6\"></line><line x1=\"3\" y1=\"10\" x2=\"21\" y2=\"10\"></line></svg>Add to Spaced Review Queue';
             }
         });
     }
@@ -1054,19 +1054,35 @@ function renderRecommendations(rows) {
 
 function formatInlineMarkdown(text) {
     if (!text) return '';
-    let res = escapeHtml(text);
-    // Bold: **text**
+    // Normalize excessive backslashes
+    let clean = text.replace(/\\\\([a-zA-Z\(\)\[\]\{\}])/g, '\\$1');
+
+    // Protect inline math: \( ... \) or $ ... $
+    const inlineMath = [];
+    let sanitized = clean.replace(/\\\(([\s\S]*?)\\\)/g, (match) => {
+        const id = `__INLINE_MATH_${inlineMath.length}__`;
+        inlineMath.push(match);
+        return id;
+    });
+    sanitized = sanitized.replace(/(?<!\$)\$([^\$\n]+?)\$(?!\$)/g, (match) => {
+        const id = `__INLINE_MATH_${inlineMath.length}__`;
+        inlineMath.push(match);
+        return id;
+    });
+
+    // Escape prose for HTML safety
+    let res = escapeHtml(sanitized);
+
+    // Standard markdown
     res = res.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    // Italic: *text*
     res = res.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    // Inline code: `text`
     res = res.replace(/`([^`]+)`/g, '<code>$1</code>');
-    
-    // If KaTeX is not loaded, convert common LaTeX math inline syntax safely
-    if (typeof renderMathInElement !== 'function') {
-        res = res.replace(/\\\((.*?)\\\)/g, (m, formula) => `<span class="math-expr">${formatMathFallback(formula)}</span>`);
-        res = res.replace(/\$([^\$]+)\$/g, (m, formula) => `<span class="math-expr">${formatMathFallback(formula)}</span>`);
-    }
+
+    // Restore inline math expressions verbatim
+    inlineMath.forEach((math, idx) => {
+        res = res.replace(`__INLINE_MATH_${idx}__`, math);
+    });
+
     return res;
 }
 
@@ -1105,63 +1121,31 @@ function renderMath(element) {
                         throwOnError: false,
                         ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
                     });
-                    return;
                 } catch (e) {}
             }
-        }, 350);
+        }, 300);
     }
-
-    // Fallback if KaTeX is not loaded yet
-    element.querySelectorAll('li, p, span, td, div').forEach(node => {
-        if (node.children.length === 0 || node.tagName === 'LI') {
-            let text = node.innerHTML;
-            if (text.includes('\\(') || text.includes('\\[') || text.includes('$')) {
-                text = text.replace(/\\\((.*?)\\\)/g, (m, formula) => `<span class="math-expr">${formatMathFallback(formula)}</span>`);
-                text = text.replace(/\\\[(.*?)\\\]/g, (m, formula) => `<div class="math-expr-block">${formatMathFallback(formula)}</div>`);
-                node.innerHTML = text;
-            }
-        }
-    });
 }
-
-function formatMathFallback(formula) {
-    if (!formula) return '';
-    let res = formula;
-    res = res.replace(/\mathbf\{([^}]+)\}/g, '<strong>$1</strong>');
-    res = res.replace(/\boldsymbol\{([^}]+)\}/g, '<strong>$1</strong>');
-    res = res.replace(/\boldsymbol\mu/g, '<strong>μ</strong>');
-    res = res.replace(/\boldsymbol\Sigma/g, '<strong>Σ</strong>');
-    res = res.replace(/\operatorname\{([^}]+)\}/g, '$1');
-    res = res.replace(/\mathbb\{R\}/g, 'ℝ');
-    res = res.replace(/\Sigma/g, 'Σ');
-    res = res.replace(/\mu/g, 'μ');
-    res = res.replace(/\sigma/g, 'σ');
-    res = res.replace(/\alpha/g, 'α');
-    res = res.replace(/\beta/g, 'β');
-    res = res.replace(/\theta/g, 'θ');
-    res = res.replace(/\epsilon/g, 'ε');
-    res = res.replace(/\delta/g, 'δ');
-    res = res.replace(/\lambda/g, 'λ');
-    res = res.replace(/\pi/g, 'π');
-    res = res.replace(/\times/g, '×');
-    res = res.replace(/\to/g, '→');
-    res = res.replace(/\le/g, '≤');
-    res = res.replace(/\ge/g, '≥');
-    res = res.replace(/\neq/g, '≠');
-    res = res.replace(/\pm/g, '±');
-    res = res.replace(/\infty/g, '∞');
-    res = res.replace(/\in/g, '∈');
-    res = res.replace(/\top/g, 'ᵀ');
-    res = res.replace(/\^T/g, 'ᵀ');
-    res = res.replace(/\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)');
-    res = res.replace(/\sqrt\{([^}]+)\}/g, '√($1)');
-    return res;
-}
-
 
 function formatTextForDisplay(text) {
     if (!text) return '';
-    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    // Normalize excessive backslashes
+    let clean = text.replace(/\\\\([a-zA-Z\(\)\[\]\{\}])/g, '\\$1');
+
+    // Protect display math blocks: \[ ... \] or $$ ... $$ across newlines
+    const displayMath = [];
+    clean = clean.replace(/\\\[([\s\S]*?)\\\]/g, (match) => {
+        const id = `__DISPLAY_MATH_${displayMath.length}__`;
+        displayMath.push(match);
+        return `\n\n${id}\n\n`;
+    });
+    clean = clean.replace(/\$\$([\s\S]*?)\$\$/g, (match) => {
+        const id = `__DISPLAY_MATH_${displayMath.length}__`;
+        displayMath.push(match);
+        return `\n\n${id}\n\n`;
+    });
+
+    const normalized = clean.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     const lines = normalized.split('\n');
     
     let html = '';
@@ -1201,6 +1185,16 @@ function formatTextForDisplay(text) {
         if (!trimmed) {
             flushList();
             flushTable();
+            continue;
+        }
+
+        // Check for display math placeholder
+        const dispMatch = trimmed.match(/^__DISPLAY_MATH_(\d+)__$/);
+        if (dispMatch) {
+            flushList();
+            flushTable();
+            const mathBlock = displayMath[parseInt(dispMatch[1])];
+            html += `<div class="math-display-block">${mathBlock}</div>`;
             continue;
         }
 
@@ -1710,7 +1704,7 @@ async function recordStudyProgress(subjectCode, sessionType, durationMinutes, no
         }
         
         if (response.ok) {
-            showNotification(`✓ Session recorded: ${durationMinutes} minutes`, 'success');
+            showNotification(`Session recorded: ${durationMinutes} minutes`, 'success');
             return data;
         } else {
             const message = data && data.error ? data.error : 'Failed to record progress';
@@ -2183,14 +2177,14 @@ function renderTopicMasteryList(subjectCode, topics) {
             <div class="topic-main-info">
                 <div class="topic-title-row">
                     <span class="topic-title">${escapeHtml(t.title)}</span>
-                    <button type="button" class="topic-drill-btn" title="Grill me on this topic">🎯 Drill</button>
+                    <button type="button" class="topic-drill-btn" title="Proof drill on this topic"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>Drill</button>
                 </div>
                 ${t.description ? `<div class="topic-desc">${formatInlineMarkdown(t.description)}</div>` : ''}
             </div>
             <div class="topic-status-pills">
-                <button type="button" class="status-pill-btn pill-needs-work ${t.status === 'needs-work' ? 'active' : ''}" data-status="needs-work" title="Mark as Needs Work">⚠️ Needs Work</button>
-                <button type="button" class="status-pill-btn pill-reviewing ${t.status === 'reviewing' ? 'active' : ''}" data-status="reviewing" title="Mark as Reviewing">🔄 Reviewing</button>
-                <button type="button" class="status-pill-btn pill-mastered ${t.status === 'mastered' ? 'active' : ''}" data-status="mastered" title="Mark as Mastered">✓ Mastered</button>
+                <button type="button" class="status-pill-btn pill-needs-work ${t.status === \'needs-work\' ? \'active\' : \'\'}" data-status="needs-work" title="Mark as Needs Work">Needs Work</button>
+                <button type="button" class="status-pill-btn pill-reviewing ${t.status === \'reviewing\' ? \'active\' : \'\'}" data-status="reviewing" title="Mark as Reviewing">Reviewing</button>
+                <button type="button" class="status-pill-btn pill-mastered ${t.status === \'mastered\' ? \'active\' : \'\'}" data-status="mastered" title="Mark as Mastered">Mastered</button>
             </div>
         `;
 
@@ -2290,8 +2284,8 @@ async function loadDueReviews() {
                         <div class="review-queue-topic"><strong>${escapeHtml(rev.topic)}</strong></div>
                     </div>
                     <div class="review-queue-actions">
-                        <button type="button" class="btn btn-sm btn-outline review-grill-btn">🎯 Grill Me</button>
-                        <button type="button" class="btn btn-sm btn-primary review-done-btn">✓ Done</button>
+                        <button type="button" class="btn btn-sm btn-outline review-grill-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>Proof Drill</button>
+                        <button type="button" class="btn btn-sm btn-primary review-done-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>Complete</button>
                     </div>
                 `;
 
@@ -2362,7 +2356,7 @@ async function loadAttentionTopics() {
                         <span class="attention-title">${escapeHtml(item.title)}</span>
                     </div>
                     <div class="attention-actions">
-                        <button type="button" class="btn btn-sm btn-outline attention-drill-btn">🎯 Proof Drill</button>
+                        <button type="button" class="btn btn-sm btn-outline attention-drill-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>Proof Drill</button>
                         <button type="button" class="btn btn-sm btn-secondary attention-review-btn">Open Syllabus</button>
                     </div>
                 `;
@@ -2410,8 +2404,8 @@ async function openGrillModal(subjectCode, topic = null) {
     if (subjectTag) subjectTag.textContent = subjectCode;
     if (topicSubtitle) {
         topicSubtitle.textContent = topic
-            ? `Target Topic: ${topic} — Rigorous proof & derivation critique.`
-            : `Testing deep derivation rigor and mathematical proof construction for ${subjectCode}.`;
+            ? `Target Topic: ${topic} — Mathematical proof and derivation rigor.`
+            : `Mathematical proof construction and derivation analysis for ${subjectCode}.`;
     }
     if (answerInput) answerInput.value = '';
     if (evalCard) evalCard.classList.add('hidden');
@@ -2432,7 +2426,7 @@ async function fetchGrillQuestion(subjectCode, topic = null) {
     const submitBtn = document.getElementById('grillSubmitBtn');
 
     if (questionText) {
-        questionText.innerHTML = '<div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); padding: 12px 0;"><i class="fas fa-spinner fa-spin"></i> Formulating examiner proof question...</div>';
+        questionText.innerHTML = '<div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); padding: 12px 0;"><i class="fas fa-spinner fa-spin"></i> Generating examination problem...</div>';
     }
     if (submitBtn) submitBtn.disabled = true;
 
@@ -2487,7 +2481,7 @@ async function handleGrillAnswerSubmit(e) {
 
     if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Evaluating Proof Rigor...';
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Evaluating Derivation...';
     }
 
     try {
@@ -2542,7 +2536,7 @@ async function handleGrillAnswerSubmit(e) {
     } finally {
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = 'Submit Proof for Evaluation';
+            submitBtn.innerHTML = 'Evaluate Derivation';
         }
     }
 }
@@ -2606,7 +2600,7 @@ function renderMilestones(milestones) {
                 <span class="milestone-days-badge ${daysClass}">${daysText}</span>
             </div>
             <h4 class="milestone-title">${escapeHtml(m.title)}</h4>
-            <div class="milestone-date-label">📅 Target: ${escapeHtml(m.target_date)}</div>
+            <div class="milestone-date-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>Target: ${escapeHtml(m.target_date)}</div>
             <div class="milestone-velocity-box">
                 <div class="velocity-row">
                     <span class="velocity-label">Required Velocity:</span>
@@ -2621,7 +2615,7 @@ function renderMilestones(milestones) {
                 </div>
             </div>
             <div class="milestone-card-actions">
-                <button type="button" class="milestone-del-btn" title="Delete milestone">✕ Delete</button>
+                <button type="button" class="milestone-del-btn" title="Delete milestone"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>Delete</button>
             </div>
         `;
 
@@ -2893,7 +2887,7 @@ function renderStagedFiles() {
         pill.innerHTML = `
             <img src="${imgUrl}" class="staged-img-thumb" alt="Preview">
             <span class="staged-img-name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
-            <button type="button" class="staged-img-remove" title="Remove image">✕</button>
+            <button type="button" class="staged-img-remove" title="Remove image">&times;</button>
         `;
 
         pill.querySelector('.staged-img-remove').addEventListener('click', (e) => {
@@ -2987,7 +2981,7 @@ function filterAndRenderNotes() {
         feed.innerHTML = `
             <div style="padding: 24px; text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
                 <p>No notes or scans found${selectedTopic || query ? ' matching your filters' : ''}.</p>
-                <p style="font-size: 0.8rem; margin-top: 4px;">Click <strong>✍️ Add Note or Upload Scanned Pages</strong> above to save your first handwritten derivation!</p>
+                <p style="font-size: 0.8rem; margin-top: 4px;">Use the form above to record your first handwritten derivation or lecture notes.</p>
             </div>
         `;
         return;
@@ -3007,7 +3001,7 @@ function filterAndRenderNotes() {
                 attachmentsHtml += `
                     <div class="note-thumbnail-wrap" data-img-url="${escapeHtml(att.public_url)}" data-caption="${escapeHtml(note.title)} - ${escapeHtml(att.original_filename)}">
                         <img src="${escapeHtml(att.public_url)}" class="note-thumbnail" alt="${escapeHtml(att.original_filename)}" loading="lazy">
-                        <span class="note-thumbnail-badge">🔍 View</span>
+                        <span class="note-thumbnail-badge">View</span>
                     </div>
                 `;
             });
@@ -3022,10 +3016,10 @@ function filterAndRenderNotes() {
                         <span class="note-type-tag">${escapeHtml(note.note_type || 'lecture')}</span>
                         ${note.topic_title ? `<span class="note-topic-tag">${escapeHtml(note.topic_title)}</span>` : ''}
                         <span>• ${dateStr}</span>
-                        ${note.attachments ? `<span>• 📷 ${note.attachments.length} scan${note.attachments.length === 1 ? '' : 's'}</span>` : ''}
+                        ${note.attachments ? `<span>• ${note.attachments.length} scan${note.attachments.length === 1 ? '' : 's'}</span>` : ''}
                     </div>
                 </div>
-                <button type="button" class="note-del-btn" title="Delete note">🗑️ Delete</button>
+                <button type="button" class="note-del-btn" title="Delete note"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>Delete</button>
             </div>
             ${note.content_markdown ? `<div class="note-content-body">${formatTextForDisplay(note.content_markdown)}</div>` : ''}
             ${attachmentsHtml}

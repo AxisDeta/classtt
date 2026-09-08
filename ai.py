@@ -183,7 +183,7 @@ Keep it concise (2-3 sentences).
             
             content = message.choices[0].message.content.strip()
             
-            LOG.info(f"✓ Generated recommendation for {subject_code}")
+            LOG.info(f"[AI] Generated recommendation for {subject_code}")
             
             return {
                 "type": rec_type,
@@ -193,7 +193,7 @@ Keep it concise (2-3 sentences).
             }
         
         except Exception as err:
-            LOG.error(f"✗ Failed to generate recommendation: {err}")
+            LOG.error(f"[AI ERROR] Failed to generate recommendation: {err}")
             return {
                 "type": "error",
                 "subject_code": subject_code,
@@ -249,12 +249,12 @@ Keep it concise (2-3 sentences total).
             )
             
             summary = message.choices[0].message.content.strip()
-            LOG.info("✓ Generated weekly summary")
+            LOG.info("[AI] Generated weekly summary")
             
             return summary
         
         except Exception as err:
-            LOG.error(f"✗ Failed to generate weekly summary: {err}")
+            LOG.error(f"[AI ERROR] Failed to generate weekly summary: {err}")
             return "Keep up with your consistent study schedule!"
     
     def get_study_tips(self, subject_code, subject_info):
@@ -331,11 +331,11 @@ Guidelines:
                     f"You should avoid this common pitfall: {mistake}" if mistake else f"You should create a one-page formula sheet summarizing definitions and core properties in {subject_code}."
                 ]
             
-            LOG.info(f"✓ Generated study tips for {subject_code}")
+            LOG.info(f"[AI] Generated study tips for {subject_code}")
             return tips[:3]
         
         except Exception as err:
-            LOG.error(f"✗ Failed to get study tips: {err}")
+            LOG.error(f"[AI ERROR] Failed to get study tips: {err}")
             method = (subject_info.get('method') or '').strip()
             mistake = (subject_info.get('mistake') or '').strip()
             title = subject_info.get('title') or subject_code
@@ -391,12 +391,12 @@ Keep it concise (2-3 sentences).
             )
             
             analysis = message.choices[0].message.content.strip()
-            LOG.info("✓ Generated study pattern analysis")
+            LOG.info("[AI] Generated study pattern analysis")
             
             return analysis
         
         except Exception as err:
-            LOG.error(f"✗ Failed to analyze study pattern: {err}")
+            LOG.error(f"[AI ERROR] Failed to analyze study pattern: {err}")
             return "Keep maintaining your study rhythm!"
 
     def generate_weekly_insights_from_recommendations(self, recommendations_list):
@@ -476,7 +476,7 @@ Keep it concise and actionable (3-4 sentences total).
             )
             
             insights = message.choices[0].message.content.strip()
-            LOG.info("✓ Generated weekly insights from recommendations")
+            LOG.info("[AI] Generated weekly insights from recommendations")
             
             return {
                 "summary": insights,
@@ -489,7 +489,7 @@ Keep it concise and actionable (3-4 sentences total).
             }
         
         except Exception as err:
-            LOG.error(f"✗ Failed to generate weekly insights: {err}")
+            LOG.error(f"[AI ERROR] Failed to generate weekly insights: {err}")
             return {
                 "summary": "Unable to generate insights at this time.",
                 "total_recommendations": 0,
@@ -500,44 +500,59 @@ Keep it concise and actionable (3-4 sentences total).
                 "top_subjects": []
             }
 
-    # ==================== ORAL EXAM & PROOF SIMULATOR ("GRILL ME") ====================
+    # ==================== PROOF DRILL & DERIVATION RIGOR ====================
+
+    @staticmethod
+    def _clean_latex(val):
+        """Recursively normalize any LaTeX quadruple-backslashes or escaped brackets"""
+        if isinstance(val, str):
+            v = val.replace('\\\\\\\\', '\\\\')
+            v = re.sub(r'\\\\([a-zA-Z\(\)\[\]\{\}])', lambda m: '\\' + m.group(1), v)
+            return v
+        elif isinstance(val, list):
+            return [StudyAI._clean_latex(item) for item in val]
+        elif isinstance(val, dict):
+            return {k: StudyAI._clean_latex(v) for k, v in val.items()}
+        return val
 
     @staticmethod
     def _safe_json_loads(text):
         """Parse JSON text that may contain unescaped LaTeX backslashes"""
         try:
-            return json.loads(text, strict=False)
+            data = json.loads(text, strict=False)
+            return StudyAI._clean_latex(data)
         except Exception:
             pass
         try:
-            # Double backslashes preceding alphabetic characters or brackets to preserve LaTeX
-            sanitized = re.sub(r'\\([a-zA-Z\(\)\[\]\{\}])', r'\\\\\1', text)
-            return json.loads(sanitized, strict=False)
+            # Double lone backslashes only if not already escaped
+            sanitized = re.sub(r'(?<!\\)\\([a-zA-Z\(\)\[\]\{\}])', lambda m: '\\\\' + m.group(1), text)
+            data = json.loads(sanitized, strict=False)
+            return StudyAI._clean_latex(data)
         except Exception:
             pass
         return None
 
     def generate_grill_question(self, subject_code, subject_info, topic=None):
-        """Generate a challenging oral exam/derivation question based on course syllabus"""
+        """Generate a challenging academic derivation or proof problem based on course syllabus"""
         try:
             topic_str = f"Specific Focus Topic: {topic}\n" if topic else ""
             title = subject_info.get('title', subject_code)
             outline_snippet = (subject_info.get('outline') or '')[:800]
 
-            prompt = f"""You are an exacting academic oral examiner testing a 3rd-year university student in {subject_code} - {title}.
+            prompt = f"""You are a university mathematics and statistics examiner testing a 3rd-year undergraduate student in {subject_code} - {title}.
 {topic_str}
 Course Syllabus Context:
 {outline_snippet}
 
-Generate exactly ONE demanding oral exam question testing a core derivation, theorem proof, or mathematical calculation.
+Generate exactly ONE rigorous problem testing a core derivation, theorem proof, or analytical calculation.
 Requirements:
-- Demand rigorous derivation steps (e.g. state assumptions, apply definitions, derive intermediate steps).
-- For inline math, formulas, and symbols, use standard LaTeX enclosed in \\( ... \\) (e.g., \\(E[\\mathbf{{X}}]\\), \\(\\Sigma\\), \\(\\varepsilon\\text{{--}}\\delta\\)).
-- For display math, use \\[ ... \\].
+- Demand rigorous mathematical derivation steps (e.g. state hypotheses, verify regularity conditions, apply definitions, derive intermediate algebraic steps).
+- For inline math, formulas, and symbols, use standard LaTeX syntax enclosed in \( ... \) (e.g., \(E[\mathbf{{X}}]\), \(\Sigma\), \(\varepsilon > 0\)).
+- For display math, use \[ ... \].
 - Return pure JSON with keys:
-  "question": "The question prompt asking the student to outline or prove the concept",
+  "question": "The problem prompt asking the student to prove, derive, or calculate the result",
   "target_concept": "Key theorem or concept tested",
-  "key_hint": "One subtle hint on which theorem, substitution, or matrix identity to start with"
+  "key_hint": "One subtle hint on which theorem, substitution, or matrix identity to apply"
 """
 
             message = self._chat_completion(
@@ -545,7 +560,7 @@ Requirements:
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.6,
-                max_tokens=500
+                max_tokens=1200
             )
 
             raw_content = message.choices[0].message.content.strip()
@@ -553,9 +568,9 @@ Requirements:
             data = self._safe_json_loads(match.group(0)) if match else None
             if data and isinstance(data, dict):
                 return {
-                    "question": data.get("question", f"Prove the central theorem in {title}."),
-                    "target_concept": data.get("target_concept", topic or title),
-                    "key_hint": data.get("key_hint", "Start from first principles.")
+                    "question": StudyAI._clean_latex(data.get("question", f"Prove the central theorem in {title}.")),
+                    "target_concept": StudyAI._clean_latex(data.get("target_concept", topic or title)),
+                    "key_hint": StudyAI._clean_latex(data.get("key_hint", "Start from first principles."))
                 }
 
             # Regex fallback extraction if full JSON decode was impeded by LaTeX
@@ -563,12 +578,12 @@ Requirements:
             hint_match = re.search(r'"key_hint"\s*:\s*"([^"]+)"', raw_content)
             concept_match = re.search(r'"target_concept"\s*:\s*"([^"]+)"', raw_content)
             return {
-                "question": q_match.group(1) if q_match else raw_content.replace('```json', '').replace('```', '').strip(),
-                "target_concept": concept_match.group(1) if concept_match else (topic or title),
-                "key_hint": hint_match.group(1) if hint_match else "Work through definitions and verify each equality."
+                "question": StudyAI._clean_latex(q_match.group(1) if q_match else raw_content.replace('```json', '').replace('```', '').strip()),
+                "target_concept": StudyAI._clean_latex(concept_match.group(1) if concept_match else (topic or title)),
+                "key_hint": StudyAI._clean_latex(hint_match.group(1) if hint_match else "Work through definitions and verify each equality.")
             }
         except Exception as err:
-            LOG.error(f"✗ Failed to generate grill question: {err}")
+            LOG.error(f"[AI ERROR] Failed to generate drill problem: {err}")
             return {
                 "question": f"State the primary definition and derive the core identity for {topic or subject_code}.",
                 "target_concept": topic or subject_code,
@@ -579,21 +594,21 @@ Requirements:
         """Evaluate a student's derivation/proof submission with rigor scoring and model solution"""
         try:
             title = subject_info.get('title', subject_code)
-            prompt = f"""You are a university mathematics and statistics examiner grading a 3rd-year student's proof submission in {subject_code} - {title}.
+            prompt = f"""You are a university mathematics and statistics professor grading a 3rd-year undergraduate student's proof submission in {subject_code} - {title}.
 
-Question:
+Problem:
 {question}
 
 Student Submission:
 {student_answer}
 
-Grade this proof rigorously and constructively.
+Grade this proof rigorously, constructively, and academically.
 Requirements:
 1. Score from 1 to 10 based on mathematical rigor, notational precision, and completeness.
-2. Highlight exactly what was correct.
-3. Identify missing steps, logical gaps, or flawed algebra.
-4. Provide a complete, textbook-quality Model Solution.
-5. In all mathematical formulas, use standard LaTeX syntax enclosed in \\( ... \\) for inline math and \\[ ... \\] for display equations.
+2. Highlight exactly what was mathematically sound and correct.
+3. Identify missing steps, logical gaps, unverified regularity conditions, or flawed algebra.
+4. Provide a complete, textbook-quality Model Solution with full derivations.
+5. In all mathematical formulas, use standard LaTeX syntax enclosed in \( ... \) for inline math and \[ ... \] for display equations.
 
 Return pure JSON with keys:
 {{
@@ -611,14 +626,14 @@ Return pure JSON with keys:
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.5,
-                max_tokens=900
+                max_tokens=1500
             )
 
             raw_content = message.choices[0].message.content.strip()
             match = re.search(r'\{.*\}', raw_content, re.DOTALL)
             data = self._safe_json_loads(match.group(0)) if match else None
             if data and isinstance(data, dict):
-                return data
+                return StudyAI._clean_latex(data)
 
             # Regex fallback extraction
             score_match = re.search(r'"score"\s*:\s*(\d+)', raw_content)
@@ -629,13 +644,13 @@ Return pure JSON with keys:
             return {
                 "score": score,
                 "rigor_level": "Strong" if score >= 8 else ("Moderate" if score >= 5 else "Needs Work"),
-                "feedback": feedback_match.group(1) if feedback_match else raw_content.replace('```json', '').replace('```', '').strip(),
+                "feedback": StudyAI._clean_latex(feedback_match.group(1) if feedback_match else raw_content.replace('```json', '').replace('```', '').strip()),
                 "strengths": ["Attempted key mathematical definitions"],
                 "missing_steps": ["Ensure all intermediate inequalities and bounds are stated"],
-                "model_solution": solution_match.group(1) if solution_match else "Refer to course notes for full derivation."
+                "model_solution": StudyAI._clean_latex(solution_match.group(1) if solution_match else "Refer to course notes for full derivation.")
             }
         except Exception as err:
-            LOG.error(f"✗ Failed to evaluate proof submission: {err}")
+            LOG.error(f"[AI ERROR] Failed to evaluate proof submission: {err}")
             return {
                 "score": 5,
                 "rigor_level": "Needs Review",
@@ -655,7 +670,7 @@ def init_ai():
         ai = StudyAI()
         return ai
     except ValueError as err:
-        LOG.error(f"✗ AI initialization failed: {err}")
+        LOG.error(f"[AI ERROR] AI initialization failed: {err}")
         return None
 
 def get_ai():
