@@ -1789,6 +1789,22 @@ html[data-theme="light"] .moon-icon { display: block; }
     margin: 0.4rem 0 0 1.25rem;
 }
 
+.modal-tips-list {
+    margin: 0.5rem 0 0 1.25rem;
+    padding-left: 0.25rem;
+}
+
+.modal-tips-list li {
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+}
+
+.katex {
+    font-size: 1.05em;
+    text-rendering: auto;
+}
+
 /* Rich Syllabus formatting inside modal */
 .outline-module-header {
     margin: 1rem 0 0.35rem 0;

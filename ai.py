@@ -278,13 +278,15 @@ You are speaking directly to a student as an expert study coach. Use "you" throu
 Subject: {subject_code} - {subject_info.get('title', 'Unknown')}
 Key Topics: {subject_info.get('description', '')}
 {outline_block}
-Provide exactly 3 quick, specific study tips for this subject.
+Provide exactly 3 quick, high-yield, specific study tips for this subject.
 Format as:
 1. You should [first tip]
 2. You should [second tip]
 3. You should [third tip]
 
-Make them practical, actionable, and specific to the subject matter.
+Guidelines:
+- When writing mathematical formulas or symbols, use standard LaTeX syntax with \( ... \) for inline expressions (e.g. \(E[\mathbf{{X}}]\), \(\boldsymbol{{\mu}}\), \(\Sigma\)).
+- Make each tip practical, actionable, and complete without cutting off.
 """
             
             message = self._chat_completion(
@@ -294,8 +296,8 @@ Make them practical, actionable, and specific to the subject matter.
                         "content": prompt
                     }
                 ],
-                temperature=0.8,
-                max_tokens=200,
+                temperature=0.7,
+                max_tokens=600,
                 top_p=1
             )
             

@@ -276,13 +276,14 @@ function initializeEventListeners() {
         subjectTipsBtn.addEventListener('click', async () => {
             if (!activeSubjectCode) return;
             const output = document.getElementById('modalAiOutput');
-            output.textContent = 'Generating AI study tips...';
+            output.innerHTML = '<span style="color: var(--text-muted);">Generating high-yield study tips...</span>';
             const tips = await getStudyTips(activeSubjectCode);
             if (!tips || tips.length === 0) {
                 output.textContent = 'No tips available right now.';
                 return;
             }
-            output.innerHTML = `<strong>AI Subject Guidance:</strong><ul>${tips.map(t => `<li>${t}</li>`).join('')}</ul>`;
+            output.innerHTML = `<strong>AI Subject Guidance:</strong><ul class="modal-tips-list">${tips.map(t => `<li>${formatInlineMarkdown(t)}</li>`).join('')}</ul>`;
+            renderMath(output);
         });
     }
 
@@ -668,6 +669,7 @@ function showSubjectModal(subjectCode) {
     document.getElementById('modalSchedule').innerHTML = schedule;
     document.getElementById('modalAiOutput').textContent = 'Use the AI button above for personalized tips and exam preparation guidance.';
     modal.classList.add('active');
+    renderMath(modal);
 }
 
 function openRecordModal(subjectCode, sessionType, timeWindow) {
@@ -874,49 +876,88 @@ function renderRecommendations(rows) {
 function formatInlineMarkdown(text) {
     if (!text) return '';
     let res = escapeHtml(text);
-    // Bold
+    // Bold: **text**
     res = res.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    // Italic
+    // Italic: *text*
     res = res.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    // Inline code
+    // Inline code: `text`
     res = res.replace(/`([^`]+)`/g, '<code>$1</code>');
-    // LaTeX math symbols
-    res = res.replace(/\\mathfrak\{R\}/g, 'ℝ');
-    res = res.replace(/\\underline\{([A-Za-z0-9_]+)\}/g, '<span class="math-vector">$1</span>');
-    res = res.replace(/\\Sigma/g, 'Σ');
-    res = res.replace(/\\mu/g, 'μ');
-    res = res.replace(/\\sigma/g, 'σ');
-    res = res.replace(/\\alpha/g, 'α');
-    res = res.replace(/\\beta/g, 'β');
-    res = res.replace(/\\epsilon/g, 'ε');
-    res = res.replace(/\\delta/g, 'δ');
-    res = res.replace(/\\theta/g, 'θ');
-    res = res.replace(/\\phi/g, 'ϕ');
-    res = res.replace(/\\le/g, '≤');
-    res = res.replace(/\\ge/g, '≥');
-    res = res.replace(/\\neq/g, '≠');
-    res = res.replace(/\\pm/g, '±');
-    res = res.replace(/\\times/g, '×');
-    res = res.replace(/\\div/g, '÷');
-    res = res.replace(/\\to/g, '→');
-    res = res.replace(/\\infty/g, '∞');
-    res = res.replace(/\\partial/g, '∂');
-    res = res.replace(/\\int/g, '∫');
-    res = res.replace(/\\sum/g, '∑');
-    res = res.replace(/\\cup/g, '∪');
-    res = res.replace(/\\cap/g, '∩');
-    res = res.replace(/\\subset/g, '⊂');
-    res = res.replace(/\\in/g, '∈');
-    res = res.replace(/\\sup/g, 'sup');
-    res = res.replace(/\\inf/g, 'inf');
-    res = res.replace(/\\lim/g, 'lim');
-    res = res.replace(/\\sqrt\[(\w+)\]\{([^}]+)\}/g, '$1√($2)');
-    res = res.replace(/\\sqrt\{([^}]+)\}/g, '√($1)');
-    res = res.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)');
-    // Math expression wrapping
-    res = res.replace(/\$([^\$]+)\$/g, '<span class="math-expr">$1</span>');
+    
+    // If KaTeX is not loaded, convert common LaTeX math inline syntax safely
+    if (typeof renderMathInElement !== 'function') {
+        res = res.replace(/\\((.*?)\\)/g, (m, formula) => `<span class="math-expr">${formatMathFallback(formula)}</span>`);
+        res = res.replace(/\$([^\$]+)\$/g, (m, formula) => `<span class="math-expr">${formatMathFallback(formula)}</span>`);
+    }
     return res;
 }
+
+// ==================== MATHEMATICAL TYPOGRAPHY & KATEX ====================
+
+function renderMath(element) {
+    if (!element) return;
+    if (typeof renderMathInElement === 'function') {
+        try {
+            renderMathInElement(element, {
+                delimiters: [
+                    { left: '$$', right: '$$', display: true },
+                    { left: '\[', right: '\]', display: true },
+                    { left: '\(', right: '\)', display: false },
+                    { left: '$', right: '$', display: false }
+                ],
+                throwOnError: false,
+                ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            });
+            return;
+        } catch (err) {
+            console.warn('KaTeX auto-render error:', err);
+        }
+    }
+
+    // Fallback if KaTeX is not loaded yet
+    element.querySelectorAll('li, p, span, td').forEach(node => {
+        let text = node.innerHTML;
+        if (text.includes('\(') || text.includes('\[') || text.includes('$')) {
+            text = text.replace(/\\((.*?)\\)/g, (m, formula) => `<span class="math-expr">${formatMathFallback(formula)}</span>`);
+            text = text.replace(/\\\[(.*?)\\\]/g, (m, formula) => `<div class="math-expr-block">${formatMathFallback(formula)}</div>`);
+            node.innerHTML = text;
+        }
+    });
+}
+
+function formatMathFallback(formula) {
+    if (!formula) return '';
+    let res = formula;
+    res = res.replace(/\mathbf\{([^}]+)\}/g, '<strong>$1</strong>');
+    res = res.replace(/\boldsymbol\{([^}]+)\}/g, '<strong>$1</strong>');
+    res = res.replace(/\boldsymbol\mu/g, '<strong>μ</strong>');
+    res = res.replace(/\boldsymbol\Sigma/g, '<strong>Σ</strong>');
+    res = res.replace(/\operatorname\{([^}]+)\}/g, '$1');
+    res = res.replace(/\mathbb\{R\}/g, 'ℝ');
+    res = res.replace(/\Sigma/g, 'Σ');
+    res = res.replace(/\mu/g, 'μ');
+    res = res.replace(/\sigma/g, 'σ');
+    res = res.replace(/\alpha/g, 'α');
+    res = res.replace(/\beta/g, 'β');
+    res = res.replace(/\theta/g, 'θ');
+    res = res.replace(/\epsilon/g, 'ε');
+    res = res.replace(/\delta/g, 'δ');
+    res = res.replace(/\lambda/g, 'λ');
+    res = res.replace(/\pi/g, 'π');
+    res = res.replace(/\times/g, '×');
+    res = res.replace(/\to/g, '→');
+    res = res.replace(/\le/g, '≤');
+    res = res.replace(/\ge/g, '≥');
+    res = res.replace(/\neq/g, '≠');
+    res = res.replace(/\pm/g, '±');
+    res = res.replace(/\infty/g, '∞');
+    res = res.replace(/\in/g, '∈');
+    res = res.replace(/\top/g, 'ᵀ');
+    res = res.replace(/\^T/g, 'ᵀ');
+    res = res.replace(/\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)');
+    res = res.replace(/\sqrt\{([^}]+)\}/g, '√($1)');
+    return res;
+}
+
 
 function formatTextForDisplay(text) {
     if (!text) return '';
