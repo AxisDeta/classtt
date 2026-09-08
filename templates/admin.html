@@ -264,7 +264,7 @@
 
         .admin-task-form {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 1rem;
             align-items: end;
         }
@@ -276,7 +276,7 @@
         }
 
         .admin-task-form label {
-            font-size: 0.9rem;
+            font-size: 0.8125rem;
             font-weight: 600;
             color: var(--text-secondary);
         }
@@ -284,55 +284,23 @@
         .admin-task-form input,
         .admin-task-form select {
             width: 100%;
-            padding: 0.85rem 1rem;
+            padding: 0.5rem 0.75rem;
             border: 1px solid var(--border-color);
-            border-radius: 12px;
+            border-radius: 4px;
             background: var(--white);
+            color: var(--text-primary);
         }
 
         .admin-task-form button {
-            grid-column: span 4;
+            grid-column: 1 / -1;
             justify-self: end;
-            padding: 0.85rem 1.2rem;
-            border: none;
-            border-radius: 12px;
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--primary-color);
+            border-radius: 4px;
+            background: var(--primary-color);
             color: #fff;
-            font-weight: 700;
+            font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .admin-task-form button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.18);
-        }
-
-        .task-edit-row {
-            background: rgba(102, 126, 234, 0.05);
-        }
-
-        .task-edit-row input,
-        .task-edit-row select {
-            width: 100%;
-            padding: 0.65rem 0.85rem;
-            border: 1px solid rgba(100, 116, 139, 0.25);
-            border-radius: 10px;
-            font-size: 0.95rem;
-            color: var(--text-primary);
-            background: var(--white);
-        }
-
-        .task-row-actions {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .task-row-actions .btn-primary,
-        .task-row-actions .btn-secondary {
-            padding: 0.45rem 0.9rem;
-            min-width: 88px;
         }
 
         .session-actions {
