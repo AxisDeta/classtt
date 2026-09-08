@@ -28,15 +28,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadFreeTasks();
     initializeEventListeners();
     initTimer();
-    initMobileNavBar();
+    initViewNavigation();
     initKeyboardShortcuts();
     
     const currentDay = getCurrentDayName() || 'Monday';
-    // Highlight active and today tabs
-    document.querySelectorAll('.tab-btn').forEach(b => {
+    // Highlight active and today day pills
+    document.querySelectorAll('.day-pill-btn').forEach(b => {
         if (b.dataset.day === currentDay) {
             b.classList.add('active');
-            b.classList.add('today-tab');
+            b.classList.add('today-pill');
         } else {
             b.classList.remove('active');
         }
@@ -336,49 +336,10 @@ function escapeHtml(str) {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// Display schedule for a specific day, strategy tab, or the free tasks tab
+// Display schedule for a specific day
 function displayDay(day) {
     const dayContent = document.getElementById('dayContent');
-    const strategyContent = document.getElementById('strategyContent');
-    const freeTasksContent = document.getElementById('freeTasksContent');
-    const chartsContainer = document.getElementById('chartsContainer');
-
-    if (day === 'Strategy') {
-        document.body.classList.remove('show-free-tasks');
-        if (dayContent) dayContent.classList.add('hidden');
-        if (freeTasksContent) freeTasksContent.classList.add('hidden');
-        if (chartsContainer) chartsContainer.classList.add('hidden');
-        if (strategyContent) {
-            strategyContent.classList.remove('hidden');
-            strategyContent.style.display = 'block';
-        }
-        renderStrategyView();
-        return;
-    }
-
-    if (day === 'FreeTasks') {
-        document.body.classList.add('show-free-tasks');
-        if (dayContent) dayContent.classList.add('hidden');
-        if (strategyContent) strategyContent.classList.add('hidden');
-        if (chartsContainer) chartsContainer.classList.add('hidden');
-        if (freeTasksContent) {
-            freeTasksContent.classList.remove('hidden');
-            freeTasksContent.style.display = 'block';
-        }
-        renderFreeTasks();
-        return;
-    }
-
-    // Normal Day
-    document.body.classList.remove('show-free-tasks');
-    if (freeTasksContent) freeTasksContent.classList.add('hidden');
-    if (strategyContent) strategyContent.classList.add('hidden');
-    if (dayContent) dayContent.classList.remove('hidden');
-    if (chartsContainer) chartsContainer.classList.remove('hidden');
-    if (freeTasksContent) freeTasksContent.style.display = 'none';
-    if (strategyContent) strategyContent.style.display = 'none';
-    if (dayContent) dayContent.style.display = '';
-    if (chartsContainer) chartsContainer.style.display = '';
+    if (!dayContent) return;
 
     const dayData = scheduleData[day];
     
@@ -1354,25 +1315,26 @@ function renderWeeklyInsights(insights) {
     `;
 }
 
-// Update today's focus section dynamically
+// Update today's focus section dynamically for both mini sidebar and full Today view
 function updateTodaysFocus() {
-    const todayElement = document.getElementById('todayFocus');
-    if (!todayElement) return;
+    const miniEl = document.getElementById('todayFocusMini');
+    const fullEl = document.getElementById('todayFocusFull');
+    if (!miniEl && !fullEl) return;
 
     const todayDay = getCurrentDayName();
     const today = scheduleData[todayDay];
-    
+
     if (!today) {
-        todayElement.innerHTML = `<p style="color: var(--text-secondary);">No sessions scheduled for ${todayDay}.</p>`;
+        const emptyMsg = `<p style="color: var(--text-secondary); padding: 0.5rem 0;">No sessions scheduled for today (${todayDay}).</p>`;
+        if (miniEl) miniEl.innerHTML = emptyMsg;
+        if (fullEl) fullEl.innerHTML = emptyMsg;
         return;
     }
 
     let allEvents = [];
 
     if (today.classes && Array.isArray(today.classes)) {
-        today.classes.forEach(cls => {
-            allEvents.push({ ...cls, type: 'class' });
-        });
+        today.classes.forEach(cls => allEvents.push({ ...cls, type: 'class' }));
     }
 
     if (today.deep_study) {
@@ -1385,31 +1347,70 @@ function updateTodaysFocus() {
         revList.forEach(r => allEvents.push({ ...r, type: 'revision' }));
     }
 
-    // Sort chronologically
     allEvents = sortEventsByTime(allEvents);
 
-    let html = `<div class="today-day-banner"><strong>${todayDay}</strong> — Today's Target</div>`;
-
-    allEvents.forEach(event => {
-        let icon = SVG_ICONS.book;
-        let badgeClass = 'class';
-        if (event.type === 'deep-study') {
-            icon = SVG_ICONS.fire;
-            badgeClass = 'deep-study';
-        } else if (event.type === 'revision') {
-            icon = SVG_ICONS.sync;
-            badgeClass = 'revision';
+    // 1. Mini sidebar version
+    if (miniEl) {
+        let miniHtml = `<div class="today-day-banner"><strong>${todayDay}</strong></div>`;
+        if (allEvents.length === 0) {
+            miniHtml += `<p class="empty-note">Rest day — light review.</p>`;
+        } else {
+            allEvents.forEach(event => {
+                let icon = SVG_ICONS.book;
+                let badgeClass = 'class';
+                if (event.type === 'deep-study') {
+                    icon = SVG_ICONS.fire;
+                    badgeClass = 'deep-study';
+                } else if (event.type === 'revision') {
+                    icon = SVG_ICONS.sync;
+                    badgeClass = 'revision';
+                }
+                miniHtml += `
+                    <div class="focus-item ${badgeClass}">
+                        <div class="focus-time">${icon} ${escapeHtml(event.time)}</div>
+                        <div class="focus-title"><strong>${escapeHtml(event.subject)}</strong> — ${escapeHtml(event.title)}</div>
+                    </div>
+                `;
+            });
         }
+        miniEl.innerHTML = miniHtml;
+    }
 
-        html += `
-            <div class="focus-item ${badgeClass}">
-                <div class="focus-time">${icon} ${escapeHtml(event.time)}</div>
-                <div class="focus-title"><strong>${escapeHtml(event.subject)}</strong> — ${escapeHtml(event.title)}</div>
-            </div>
-        `;
-    });
+    // 2. Full Dedicated Today View version
+    if (fullEl) {
+        if (allEvents.length === 0) {
+            fullEl.innerHTML = `
+                <div class="empty-state">
+                    ${SVG_ICONS.emptyCalendar}
+                    <p>No study sessions scheduled for today (${todayDay}). Enjoy your rest or do light consolidation.</p>
+                </div>
+            `;
+        } else {
+            let fullHtml = `<div class="today-cards-grid">`;
+            allEvents.forEach(event => {
+                fullHtml += createEventCard(event, event.type);
+            });
+            fullHtml += `</div>`;
+            fullEl.innerHTML = fullHtml;
 
-    todayElement.innerHTML = html || `<p style="color: var(--text-secondary);">${todayDay}: Rest day — light consolidation.</p>`;
+            // Bind click listeners in full view
+            fullEl.querySelectorAll('.event-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const subject = card.dataset.subject;
+                    if (subject && subject !== 'Weekly Reflection' && subject !== 'Optional Light Revision') {
+                        showSubjectModal(subject);
+                    }
+                });
+            });
+
+            fullEl.querySelectorAll('.record-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openRecordModal(btn.dataset.subject, btn.dataset.type, btn.dataset.time);
+                });
+            });
+        }
+    }
 }
 
 // Get current day name based on local date
@@ -1749,38 +1750,104 @@ function initTimer() {
     updateTimerUI();
 }
 
-// ==================== MOBILE NAVIGATION BAR ====================
-function initMobileNavBar() {
-    const mobileBtns = document.querySelectorAll('.mobile-nav-btn');
-    if (!mobileBtns || mobileBtns.length === 0) return;
 
-    mobileBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            mobileBtns.forEach(b => b.classList.remove('active'));
+// ==================== UNIFIED VIEW SWITCHING (PC & MOBILE) ====================
+let currentActiveView = 'schedule';
+
+function switchView(viewName) {
+    currentActiveView = viewName;
+
+    // Update nav menu buttons on PC and Mobile
+    document.querySelectorAll('.nav-menu-btn').forEach(btn => {
+        if (btn.dataset.view === viewName) {
             btn.classList.add('active');
-            const targetView = btn.dataset.target;
-            
-            document.body.setAttribute('data-mobile-view', targetView);
-            
-            if (targetView === 'strategy') {
-                displayDay('Strategy');
-                document.querySelectorAll('.tab-btn').forEach(b => {
-                    if (b.dataset.day === 'Strategy') b.classList.add('active');
-                    else b.classList.remove('active');
-                });
-            } else if (targetView === 'schedule') {
-                const curDay = getCurrentDayName() || 'Monday';
-                displayDay(curDay);
-                document.querySelectorAll('.tab-btn').forEach(b => {
-                    if (b.dataset.day === curDay) b.classList.add('active');
-                    else b.classList.remove('active');
-                });
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+        if (btn.dataset.target === viewName) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    // Toggle view containers
+    const views = {
+        'schedule': document.getElementById('viewSchedule'),
+        'today': document.getElementById('viewToday'),
+        'timer': document.getElementById('viewTimer'),
+        'overview': document.getElementById('viewOverview'),
+        'strategy': document.getElementById('viewStrategy'),
+        'freetasks': document.getElementById('viewFreeTasks')
+    };
+
+    Object.entries(views).forEach(([v, el]) => {
+        if (el) {
+            if (v === viewName) {
+                el.classList.remove('hidden');
+                el.classList.add('active');
+            } else {
+                el.classList.add('hidden');
+                el.classList.remove('active');
             }
-            
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    });
+
+    // Toggle day pills bar (only relevant for Schedule view)
+    const dayPillsBar = document.getElementById('dayPillsBar');
+    if (dayPillsBar) {
+        if (viewName === 'schedule') {
+            dayPillsBar.classList.remove('hidden');
+        } else {
+            dayPillsBar.classList.add('hidden');
+        }
+    }
+
+    // Trigger view-specific renderers
+    if (viewName === 'today') {
+        updateTodaysFocus();
+    } else if (viewName === 'overview') {
+        refreshProgressAndInsights();
+    } else if (viewName === 'strategy') {
+        renderStrategyView();
+    } else if (viewName === 'freetasks') {
+        renderFreeTasks();
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function initViewNavigation() {
+    // Primary PC Menu buttons
+    document.querySelectorAll('.nav-menu-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetView = btn.dataset.view;
+            if (targetView) switchView(targetView);
+        });
+    });
+
+    // Mobile Navigation buttons
+    document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetView = btn.dataset.target;
+            if (targetView) switchView(targetView);
+        });
+    });
+
+    // Day Pill buttons (Mon - Sun)
+    document.querySelectorAll('.day-pill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.day-pill-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const day = btn.dataset.day;
+            displayDay(day);
         });
     });
 }
+
 
 // ==================== KEYBOARD SHORTCUTS ====================
 function initKeyboardShortcuts() {
@@ -1802,25 +1869,16 @@ function initKeyboardShortcuts() {
 
         if (dayKeys[e.key]) {
             const selectedDay = dayKeys[e.key];
-            document.querySelectorAll('.tab-btn').forEach(b => {
+            switchView('schedule');
+            document.querySelectorAll('.day-pill-btn').forEach(b => {
                 if (b.dataset.day === selectedDay) b.classList.add('active');
                 else b.classList.remove('active');
             });
             displayDay(selectedDay);
         } else if (e.key.toLowerCase() === 's') {
-            document.querySelectorAll('.tab-btn').forEach(b => {
-                if (b.dataset.day === 'Strategy') b.classList.add('active');
-                else b.classList.remove('active');
-            });
-            displayDay('Strategy');
+            switchView('strategy');
         } else if (e.key.toLowerCase() === 't') {
-            const today = getCurrentDayName() || 'Monday';
-            document.querySelectorAll('.tab-btn').forEach(b => {
-                if (b.dataset.day === today) b.classList.add('active');
-                else b.classList.remove('active');
-            });
-            displayDay(today);
-            showNotification(`Jumped to Today (${today})`, 'info');
+            switchView('today');
         } else if (e.key.toLowerCase() === 'd') {
             toggleTheme();
         } else if (e.key === 'Escape') {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Weekly Study Scheduler</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260908v4') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260908v5') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -63,50 +63,221 @@
             </div>
         </header>
 
-        <!-- Navigation Tabs -->
-        <nav class="nav-tabs">
-            <div class="tabs-container">
-                <button class="tab-btn active" data-day="Monday">
-                    <span class="day-name">Mon</span>
+        <!-- Primary Navigation Menus (PC & Mobile) -->
+        <nav class="primary-nav">
+            <div class="nav-menu-container">
+                <button type="button" class="nav-menu-btn active" data-view="schedule">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span>Schedule</span>
                 </button>
-                <button class="tab-btn" data-day="Tuesday">
-                    <span class="day-name">Tue</span>
+                <button type="button" class="nav-menu-btn" data-view="today">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span>Today's Target</span>
                 </button>
-                <button class="tab-btn" data-day="Wednesday">
-                    <span class="day-name">Wed</span>
+                <button type="button" class="nav-menu-btn" data-view="timer">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span>Focus Timer</span>
                 </button>
-                <button class="tab-btn" data-day="Thursday">
-                    <span class="day-name">Thu</span>
+                <button type="button" class="nav-menu-btn" data-view="overview">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    <span>Overview & Analytics</span>
                 </button>
-                <button class="tab-btn" data-day="Friday">
-                    <span class="day-name">Fri</span>
+                <button type="button" class="nav-menu-btn" data-view="strategy">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    <span>Strategy & Rules</span>
                 </button>
-                <button class="tab-btn" data-day="Saturday">
-                    <span class="day-name">Sat</span>
-                </button>
-                <button class="tab-btn" data-day="Sunday">
-                    <span class="day-name">Sun</span>
-                </button>
-                <button class="tab-btn" data-day="Strategy">
-                    <span class="day-name">Strategy & Rules</span>
-                </button>
-                <button class="tab-btn" data-day="FreeTasks">
-                    <span class="day-name">Free Tasks</span>
+                <button type="button" class="nav-menu-btn" data-view="freetasks">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 11l3 3L22 4"></path>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                    </svg>
+                    <span>Free Tasks</span>
                 </button>
             </div>
         </nav>
 
-        <!-- Main Content -->
+        <!-- Secondary Day Navigation (Visible only when Schedule view is active) -->
+        <div class="day-pills-bar" id="dayPillsBar">
+            <button class="day-pill-btn active" data-day="Monday">Mon</button>
+            <button class="day-pill-btn" data-day="Tuesday">Tue</button>
+            <button class="day-pill-btn" data-day="Wednesday">Wed</button>
+            <button class="day-pill-btn" data-day="Thursday">Thu</button>
+            <button class="day-pill-btn" data-day="Friday">Fri</button>
+            <button class="day-pill-btn" data-day="Saturday">Sat</button>
+            <button class="day-pill-btn" data-day="Sunday">Sun</button>
+        </div>
+
+        <!-- Main Content Area with Dedicated Views -->
         <main class="main-content">
-            <!-- Schedule View -->
-            <div class="schedule-view">
-                <div id="dayContent" class="day-content">
-                    <!-- Content will be loaded dynamically -->
+            <!-- 1. SCHEDULE VIEW -->
+            <div id="viewSchedule" class="app-view active">
+                <div class="schedule-layout">
+                    <div class="schedule-cards-col">
+                        <div id="dayContent" class="day-content">
+                            <!-- Events loaded dynamically -->
+                        </div>
+                    </div>
+                    <aside class="schedule-side-col">
+                        <!-- Today Quick Glance -->
+                        <div class="panel-card">
+                            <h4>Today's Snapshot</h4>
+                            <div id="todayFocusMini" class="today-focus-mini">
+                                <!-- Filled dynamically -->
+                            </div>
+                        </div>
+                        <!-- Legend -->
+                        <div class="panel-card legend-card">
+                            <h4>Legend</h4>
+                            <div class="legend-item">
+                                <span class="legend-box legend-class"></span>
+                                <span>Classes</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-box legend-deep"></span>
+                                <span>Deep Study</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-box legend-revision"></span>
+                                <span>Revision</span>
+                            </div>
+                        </div>
+                    </aside>
                 </div>
-                <div id="strategyContent" class="strategy-view hidden">
-                    <!-- Strategy and rules content will be loaded dynamically -->
+            </div>
+
+            <!-- 2. TODAY'S TARGET VIEW -->
+            <div id="viewToday" class="app-view hidden">
+                <div class="section-hero">
+                    <h2>Today's Study Target</h2>
+                    <p>Focus strictly on today's sessions. Record progress directly as you complete each block.</p>
                 </div>
-                <div id="freeTasksContent" class="free-tasks-view hidden">
+                <div id="todayFocusFull" class="today-focus-full">
+                    <!-- Filled dynamically -->
+                </div>
+            </div>
+
+            <!-- 3. FOCUS TIMER VIEW -->
+            <div id="viewTimer" class="app-view hidden">
+                <div class="timer-standalone-card">
+                    <div class="section-header-row">
+                        <h3>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-small">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                            Study Focus Timer
+                        </h3>
+                        <span class="timer-mode-badge" id="timerModeBadge">Deep Study</span>
+                    </div>
+                    <div class="timer-display-wrap">
+                        <div class="timer-digits" id="timerDisplay">120:00</div>
+                        <div class="timer-progress-bar"><div class="timer-progress-fill" id="timerProgressFill" style="width: 100%;"></div></div>
+                    </div>
+                    <div class="timer-presets">
+                        <button type="button" class="preset-btn active" data-mins="120">2h Deep</button>
+                        <button type="button" class="preset-btn" data-mins="60">1h Rev</button>
+                        <button type="button" class="preset-btn" data-mins="30">30m Drill</button>
+                        <button type="button" class="preset-btn" data-mins="25">25m Pomo</button>
+                    </div>
+                    <div class="timer-controls">
+                        <button type="button" class="timer-btn timer-start-btn" id="timerStartBtn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            Start Focus
+                        </button>
+                        <button type="button" class="timer-btn timer-reset-btn" id="timerResetBtn">Reset</button>
+                        <button type="button" class="timer-btn timer-log-btn" id="timerLogBtn">Log Session</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. OVERVIEW & ANALYTICS VIEW -->
+            <div id="viewOverview" class="app-view hidden">
+                <div class="overview-dashboard">
+                    <!-- Progress Stats -->
+                    <div class="overview-grid">
+                        <div class="panel-card">
+                            <h3>Progress Snapshot</h3>
+                            <div id="progressOverview" class="progress-overview">
+                                <!-- Filled dynamically -->
+                            </div>
+                            <p id="weeklySummary" class="weekly-summary">Loading weekly summary...</p>
+                        </div>
+                        <div class="panel-card">
+                            <div class="section-header-row">
+                                <h3>Study Recommendations</h3>
+                                <div class="header-actions">
+                                    <button id="refreshInsights" class="mini-btn" type="button">Refresh</button>
+                                    <button id="markAllRead" class="mini-btn" type="button">Mark All</button>
+                                </div>
+                            </div>
+                            <div id="recommendationsList" class="recommendations-list">
+                                <!-- Filled dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Grid -->
+                    <div class="charts-container" id="chartsContainer">
+                        <h3>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-small">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                            </svg>
+                            Weekly Progress Visualizations
+                        </h3>
+                        <div class="chart-section">
+                            <div class="chart-container">
+                                <h4>Hours by Subject</h4>
+                                <canvas id="hoursChart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <h4>Sessions Distribution</h4>
+                                <canvas id="sessionsChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Subjects Overview -->
+                    <div class="panel-card">
+                        <h3>Subjects (7 Units)</h3>
+                        <div id="subjectsList" class="subjects-list-grid">
+                            <!-- Filled dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Weekly Analysis -->
+                    <div class="panel-card">
+                        <h3>Weekly Analysis</h3>
+                        <div id="weeklyInsights" class="weekly-insights">
+                            <p class="empty-note">Loading weekly analysis...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. STRATEGY VIEW -->
+            <div id="viewStrategy" class="app-view hidden">
+                <div id="strategyContent" class="strategy-view">
+                    <!-- Strategy content loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- 6. FREE TASKS VIEW -->
+            <div id="viewFreeTasks" class="app-view hidden">
+                <div id="freeTasksContent" class="free-tasks-view">
                     <div class="tasks-header">
                         <h3>Weekly Free Time Tasks</h3>
                         <p>Track tasks you want to complete during your free time this week. These items are kept separate from your academic schedule.</p>
@@ -115,7 +286,7 @@
                         <button class="free-task-toggle" id="freeTaskToggle" type="button" aria-expanded="false" aria-controls="freeTaskFormWrap">
                             <div>
                                 <h4>Add a free-time task</h4>
-                                <p>Keep your personal and weekly tasks separate from your study schedule so you can track both without clutter.</p>
+                                <p>Keep your personal tasks separate from your study schedule.</p>
                             </div>
                             <span class="free-task-toggle-icon" aria-hidden="true">+</span>
                         </button>
@@ -169,159 +340,7 @@
                         </div>
                     </div>
                 </div>
-
-                <div id="chartsContainer" class="charts-container">
-                    <h3>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-small">
-                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                        </svg>
-                        Weekly Progress Visualizations
-                    </h3>
-                    <div class="chart-section">
-                        <div class="chart-container">
-                            <h4>Hours by Subject</h4>
-                            <canvas id="hoursChart"></canvas>
-                        </div>
-                        <div class="chart-container">
-                            <h4>Sessions Distribution</h4>
-                            <canvas id="sessionsChart"></canvas>
-                        </div>
-                    </div>
-                </div>
             </div>
-
-            <!-- Sidebar -->
-            <aside class="sidebar" id="sidebar">
-                <!-- Live Study Session Timer -->
-                <div class="sidebar-section study-timer-card">
-                    <div class="section-header-row">
-                        <h3>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-small">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <polyline points="12 6 12 12 16 14"></polyline>
-                            </svg>
-                            Study Focus Timer
-                        </h3>
-                        <span class="timer-mode-badge" id="timerModeBadge">Deep Study</span>
-                    </div>
-                    <div class="timer-display-wrap">
-                        <div class="timer-digits" id="timerDisplay">120:00</div>
-                        <div class="timer-progress-bar"><div class="timer-progress-fill" id="timerProgressFill" style="width: 100%;"></div></div>
-                    </div>
-                    <div class="timer-presets">
-                        <button type="button" class="preset-btn active" data-mins="120">2h Deep</button>
-                        <button type="button" class="preset-btn" data-mins="60">1h Rev</button>
-                        <button type="button" class="preset-btn" data-mins="30">30m Drill</button>
-                        <button type="button" class="preset-btn" data-mins="25">25m Pomo</button>
-                    </div>
-                    <div class="timer-controls">
-                        <button type="button" class="timer-btn timer-start-btn" id="timerStartBtn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                            Start Focus
-                        </button>
-                        <button type="button" class="timer-btn timer-reset-btn" id="timerResetBtn">Reset</button>
-                        <button type="button" class="timer-btn timer-log-btn" id="timerLogBtn">Log Session</button>
-                    </div>
-                </div>
-
-                <!-- Today's Schedule -->
-                <div class="sidebar-section">
-                    <h3>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-small">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                        </svg>
-                        Today's Schedule
-                    </h3>
-                    <div id="todayFocus" class="today-focus">
-                        <!-- Filled dynamically -->
-                    </div>
-                </div>
-
-                <!-- Subjects Overview -->
-                <div class="sidebar-section">
-                    <h3>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-small">
-                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-                        </svg>
-                        Subjects (7 Units)
-                    </h3>
-                    <div id="subjectsList" class="subjects-list">
-                        <!-- Subjects will be loaded dynamically -->
-                    </div>
-                </div>
-
-                <!-- Progress Snapshot -->
-                <div class="sidebar-section">
-                    <h3>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-small">
-                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                        </svg>
-                        Progress Snapshot
-                    </h3>
-                    <div id="progressOverview" class="progress-overview">
-                        <!-- Filled dynamically -->
-                    </div>
-                    <p id="weeklySummary" class="weekly-summary">Loading weekly summary...</p>
-                </div>
-
-                <!-- Recommendations -->
-                <div class="sidebar-section">
-                    <div class="section-header-row">
-                        <h3>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-small">
-                                <path d="M12 2a7 7 0 0 0-7 7c0 2.52 1.72 4.62 4.04 5.28L8 22l4-3 4 3-1.04-7.72A5.49 5.49 0 0 0 19 9a7 7 0 0 0-7-7z"></path>
-                            </svg>
-                            Study Recommendations
-                        </h3>
-                        <div class="header-actions">
-                            <button id="refreshInsights" class="mini-btn" type="button">Refresh</button>
-                            <button id="markAllRead" class="mini-btn" type="button">Mark All</button>
-                        </div>
-                    </div>
-                    <div id="recommendationsList" class="recommendations-list">
-                        <!-- Filled dynamically -->
-                    </div>
-                </div>
-
-                <!-- Weekly Insights -->
-                <div class="sidebar-section">
-                    <h3>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-small">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                        Weekly Analysis
-                    </h3>
-                    <div id="weeklyInsights" class="weekly-insights">
-                        <p class="empty-note">Loading weekly analysis...</p>
-                    </div>
-                </div>
-
-                <!-- Legend -->
-                <div class="sidebar-section legend">
-                    <h3>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-small">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="16" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                        </svg>
-                        Legend
-                    </h3>
-                    <div class="legend-item">
-                        <span class="legend-box legend-class"></span>
-                        <span>Classes</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-box legend-deep"></span>
-                        <span>Deep Study</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-box legend-revision"></span>
-                        <span>Revision</span>
-                    </div>
-                </div>
-            </aside>
         </main>
 
         <!-- Mobile Bottom Quick Navigation Bar -->
@@ -331,20 +350,24 @@
                 <span>Schedule</span>
             </button>
             <button type="button" class="mobile-nav-btn" data-target="today">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                 <span>Today</span>
             </button>
             <button type="button" class="mobile-nav-btn" data-target="timer">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 <span>Timer</span>
             </button>
+            <button type="button" class="mobile-nav-btn" data-target="overview">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                <span>Analytics</span>
+            </button>
             <button type="button" class="mobile-nav-btn" data-target="strategy">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                 <span>Strategy</span>
             </button>
-            <button type="button" class="mobile-nav-btn" data-target="overview">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                <span>Overview</span>
+            <button type="button" class="mobile-nav-btn" data-target="freetasks">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                <span>Tasks</span>
             </button>
         </nav>
     </div>
@@ -395,6 +418,6 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='script.js', v='20260908') }}"></script>
+    <script src="{{ url_for('static', filename='script.js', v='20260908v5') }}"></script>
 </body>
 </html>
