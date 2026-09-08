@@ -30,6 +30,8 @@ app.config['SESSION_COOKIE_SECURE'] = IS_PRODUCTION
 from flask_session import Session
 Session(app)
 
+from course_topics import get_topics_for_subject
+
 # Owner authentication configuration (from Render environment variables)
 AUTH_EMAIL = (os.getenv('AUTH_EMAIL') or os.getenv('LOGIN_EMAIL') or os.getenv('ADMIN_EMAIL') or os.getenv('OWNER_EMAIL') or 'shivogojohn@gmail.com').strip().lower()
 AUTH_PASSWORD = os.getenv('AUTH_PASSWORD') or os.getenv('LOGIN_PASSWORD') or os.getenv('ADMIN_PASSWORD') or os.getenv('OWNER_PASSWORD') or ''
@@ -478,7 +480,11 @@ rules_and_strategy = {
 @app.before_request
 def require_login():
     """Global gatekeeper: Enforce login across all pages and APIs (except public auth endpoints)."""
-    public_endpoints = {'login', 'logout', 'static', 'healthz', 'admin_login', 'admin_logout', 'get_study_tips'}
+    public_endpoints = {
+        'login', 'logout', 'static', 'healthz', 'admin_login', 'admin_logout', 
+        'get_study_tips', 'get_subject_topics', 'get_attention_needed_api', 
+        'get_due_reviews_api', 'get_milestones_api'
+    }
     
     # Allow static assets and health check
     if request.path.startswith('/static/') or request.path == '/healthz':
@@ -874,7 +880,15 @@ def record_progress():
                         rec.get('type'),
                         rec.get('content')
                     )
-            
+
+            # If student flagged a struggle or topic for review, queue for spaced repetition
+            flag_review = data.get('flag_for_review')
+            struggled_topic = (data.get('struggled_topic') or '').strip()
+            if not duplicate and (flag_review or struggled_topic):
+                review_topic = struggled_topic or (notes[:120] if notes else f"{subject_code} session review")
+                reason = notes[:200] if notes else "Flagged during study session"
+                db.create_review_item(subject_code, review_topic, reason, interval_days=3)
+
             return jsonify({
                 "success": True,
                 "session_id": session_result.get('session_id'),
@@ -1061,6 +1075,244 @@ def get_weekly_insights():
     except Exception as err:
         LOG.error(f"Error generating weekly insights: {err}")
         return jsonify({"error": str(err)}), 500
+
+# ==================== TOPIC MASTERY & CONFIDENCE ====================
+
+@app.route('/api/topics/<subject_code>')
+def get_subject_topics(subject_code):
+    """Get all syllabus subtopics for a subject merged with user mastery status"""
+    norm_code = subject_code.strip().upper() if subject_code else ''
+    base_topics = get_topics_for_subject(norm_code)
+    
+    saved_mastery = {}
+    if db:
+        saved_mastery = db.get_topic_mastery(norm_code)
+    
+    topics = []
+    for t in base_topics:
+        m = saved_mastery.get(t['title'], {})
+        topics.append({
+            "id": t['id'],
+            "title": t['title'],
+            "module": t['module'],
+            "status": m.get('status', 'needs-work'),
+            "last_reviewed": m.get('last_reviewed').isoformat() if m.get('last_reviewed') else None,
+            "notes": m.get('notes', '')
+        })
+    
+    return jsonify({
+        "ok": True,
+        "subject_code": norm_code,
+        "topics": topics,
+        "total": len(topics),
+        "mastered_count": sum(1 for t in topics if t['status'] == 'mastered'),
+        "reviewing_count": sum(1 for t in topics if t['status'] == 'reviewing'),
+        "needs_work_count": sum(1 for t in topics if t['status'] == 'needs-work')
+    }), 200
+
+@app.route('/api/topics/<subject_code>/status', methods=['POST'])
+def update_topic_status_api(subject_code):
+    """Update confidence status for a specific syllabus topic"""
+    if not db:
+        return jsonify({"error": "Database not available"}), 500
+    
+    data = request.get_json() or {}
+    topic_title = data.get('topic_title')
+    topic_id = data.get('topic_id')
+    status = data.get('status', 'needs-work')
+    notes = data.get('notes')
+    
+    norm_code = subject_code.strip().upper()
+    if not topic_title and topic_id:
+        base_topics = get_topics_for_subject(norm_code)
+        for bt in base_topics:
+            if bt.get('id') == topic_id:
+                topic_title = bt.get('title')
+                break
+        if not topic_title:
+            topic_title = topic_id
+
+    if not topic_title:
+        return jsonify({"error": "Topic title or id is required"}), 400
+    
+    success = db.update_topic_status(norm_code, topic_title, status, notes)
+    if success:
+        return jsonify({"ok": True, "success": True, "subject_code": norm_code, "topic_title": topic_title, "status": status}), 200
+    return jsonify({"error": "Failed to update topic status"}), 500
+
+@app.route('/api/topics/attention-needed')
+def get_attention_needed_api():
+    """Get list of weak topics requiring immediate study focus"""
+    if not db:
+        return jsonify({"topics": []}), 200
+    
+    topics = db.get_attention_needed_topics(limit=8)
+    formatted = []
+    for t in topics:
+        subj = subject_info.get(t['subject_code'], {})
+        formatted.append({
+            "id": t['id'],
+            "subject_code": t['subject_code'],
+            "subject_title": subj.get('title', t['subject_code']),
+            "subject_color": subj.get('color', '#3b82f6'),
+            "title": t['topic_title'],
+            "topic_title": t['topic_title'],
+            "status": t['status'],
+            "last_reviewed": t['last_reviewed'].isoformat() if t.get('last_reviewed') else None
+        })
+    return jsonify({"ok": True, "attention": formatted, "attention_needed": formatted}), 200
+
+# ==================== SPACED REPETITION REVIEWS ====================
+
+@app.route('/api/reviews/due')
+def get_due_reviews_api():
+    """Fetch pending spaced repetition review items"""
+    if not db:
+        return jsonify({"reviews": []}), 200
+    
+    reviews = db.get_due_reviews()
+    formatted = []
+    for r in reviews:
+        subj = subject_info.get(r['subject_code'], {})
+        formatted.append({
+            "id": r['id'],
+            "subject_code": r['subject_code'],
+            "subject_title": subj.get('title', r['subject_code']),
+            "subject_color": subj.get('color', '#3b82f6'),
+            "topic": r['topic'],
+            "difficulty_reason": r.get('difficulty_reason', ''),
+            "interval_stage": r['interval_stage'],
+            "next_review_date": r['next_review_date'].isoformat() if hasattr(r['next_review_date'], 'isoformat') else str(r['next_review_date'])
+        })
+    return jsonify({"ok": True, "reviews": formatted, "count": len(formatted)}), 200
+
+@app.route('/api/reviews/create', methods=['POST'])
+def create_review_api():
+    """Manually add a topic to the spaced repetition queue"""
+    if not db:
+        return jsonify({"error": "Database not available"}), 500
+    data = request.get_json() or {}
+    subject_code = data.get('subject_code', '').strip().upper()
+    topic = data.get('topic', '').strip()
+    reason = data.get('difficulty_reason', 'Manual review queue addition')
+    interval_days = int(data.get('interval_days', 3))
+    
+    if not subject_code or not topic:
+        return jsonify({"error": "Subject code and topic are required"}), 400
+    
+    review_id = db.create_review_item(subject_code, topic, reason, interval_days)
+    if review_id:
+        return jsonify({"ok": True, "success": True, "review_id": review_id}), 201
+    return jsonify({"error": "Failed to create review item"}), 500
+
+@app.route('/api/reviews/<int:review_id>/complete', methods=['POST'])
+def complete_review_api(review_id):
+    """Mark a review completed and advance interval"""
+    if not db:
+        return jsonify({"error": "Database not available"}), 500
+    advance = request.get_json().get('advance', True) if request.is_json else True
+    success = db.complete_review_item(review_id, advance_interval=advance)
+    if success:
+        return jsonify({"ok": True, "success": True, "review_id": review_id}), 200
+    return jsonify({"error": "Failed to complete review item"}), 500
+
+# ==================== EXAM MILESTONES & VELOCITY ====================
+
+@app.route('/api/milestones', methods=['GET'])
+def get_milestones_api():
+    """Fetch all upcoming exam milestones with remaining days and velocity"""
+    if not db:
+        return jsonify({"milestones": []}), 200
+    milestones = db.get_milestones()
+    formatted = []
+    for m in milestones:
+        subj = subject_info.get(m['subject_code'], {})
+        target_hours = float(m.get('target_hours') or 20.0)
+        days_rem = int(m.get('days_remaining') or 0)
+        weeks_rem = max(days_rem / 7.0, 0.5) if days_rem > 0 else 0
+        velocity = round(target_hours / weeks_rem, 1) if weeks_rem > 0 else target_hours
+        formatted.append({
+            "id": m['id'],
+            "subject_code": m['subject_code'],
+            "subject_title": subj.get('title', m['subject_code']),
+            "subject_color": subj.get('color', '#3b82f6'),
+            "title": m['title'],
+            "target_date": m['target_date'].isoformat() if hasattr(m['target_date'], 'isoformat') else str(m['target_date']),
+            "target_hours": target_hours,
+            "days_remaining": days_rem,
+            "velocity_hours_per_week": velocity,
+            "completed_hours": 0,
+            "progress_pct": 0
+        })
+    return jsonify({"ok": True, "milestones": formatted}), 200
+
+@app.route('/api/milestones', methods=['POST'])
+def add_milestone_api():
+    """Add an upcoming exam/CAT milestone"""
+    if not db:
+        return jsonify({"error": "Database not available"}), 500
+    data = request.get_json() or {}
+    subject_code = data.get('subject_code', '').strip().upper()
+    title = data.get('title', '').strip()
+    target_date = data.get('target_date')
+    target_hours = float(data.get('target_hours', 20.0))
+    
+    if not subject_code or not title or not target_date:
+        return jsonify({"error": "Subject, title, and target date are required"}), 400
+    
+    new_id = db.add_milestone(subject_code, title, target_date, target_hours)
+    if new_id:
+        return jsonify({"ok": True, "success": True, "milestone_id": new_id}), 201
+    return jsonify({"error": "Failed to add milestone"}), 500
+
+@app.route('/api/milestones/<int:milestone_id>', methods=['DELETE'])
+def delete_milestone_api(milestone_id):
+    """Delete an exam milestone"""
+    if not db:
+        return jsonify({"error": "Database not available"}), 500
+    success = db.delete_milestone(milestone_id)
+    if success:
+        return jsonify({"ok": True, "success": True}), 200
+    return jsonify({"error": "Failed to delete milestone"}), 500
+
+# ==================== ORAL EXAM & PROOF SIMULATOR ("GRILL ME") ====================
+
+@app.route('/api/ai/grill/question', methods=['POST'])
+def generate_grill_question_api():
+    """Generate an oral exam question or proof prompt for a subject and topic"""
+    if not ai:
+        return jsonify({"error": "AI not available"}), 500
+    
+    data = request.get_json() or {}
+    subject_code = data.get('subject_code', '').strip().upper()
+    topic = data.get('topic', '').strip()
+    
+    if not subject_code:
+        return jsonify({"error": "subject_code is required"}), 400
+    
+    subject = subject_info.get(subject_code, {})
+    result = ai.generate_grill_question(subject_code, subject, topic=topic or None)
+    if isinstance(result, dict):
+        result["ok"] = True
+    return jsonify(result), 200
+
+@app.route('/api/ai/grill/evaluate', methods=['POST'])
+def evaluate_proof_api():
+    """Evaluate student's proof/derivation submission and return rigor critique with model solution"""
+    if not ai:
+        return jsonify({"error": "AI not available"}), 500
+    
+    data = request.get_json() or {}
+    subject_code = data.get('subject_code', '').strip().upper()
+    question = data.get('question', '').strip()
+    student_answer = (data.get('student_answer') or data.get('answer') or '').strip()
+    
+    if not subject_code or not question or not student_answer:
+        return jsonify({"error": "subject_code, question, and student_answer are all required"}), 400
+    
+    subject = subject_info.get(subject_code, {})
+    evaluation = ai.evaluate_proof_submission(subject_code, subject, question, student_answer)
+    return jsonify({"ok": True, "evaluation": evaluation}), 200
 
 if __name__ == '__main__':
     app.run(

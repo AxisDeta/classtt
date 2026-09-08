@@ -500,6 +500,151 @@ Keep it concise and actionable (3-4 sentences total).
                 "top_subjects": []
             }
 
+    # ==================== ORAL EXAM & PROOF SIMULATOR ("GRILL ME") ====================
+
+    @staticmethod
+    def _safe_json_loads(text):
+        """Parse JSON text that may contain unescaped LaTeX backslashes"""
+        try:
+            return json.loads(text, strict=False)
+        except Exception:
+            pass
+        try:
+            # Double backslashes preceding alphabetic characters or brackets to preserve LaTeX
+            sanitized = re.sub(r'\\([a-zA-Z\(\)\[\]\{\}])', r'\\\\\1', text)
+            return json.loads(sanitized, strict=False)
+        except Exception:
+            pass
+        return None
+
+    def generate_grill_question(self, subject_code, subject_info, topic=None):
+        """Generate a challenging oral exam/derivation question based on course syllabus"""
+        try:
+            topic_str = f"Specific Focus Topic: {topic}\n" if topic else ""
+            title = subject_info.get('title', subject_code)
+            outline_snippet = (subject_info.get('outline') or '')[:800]
+
+            prompt = f"""You are an exacting academic oral examiner testing a 3rd-year university student in {subject_code} - {title}.
+{topic_str}
+Course Syllabus Context:
+{outline_snippet}
+
+Generate exactly ONE demanding oral exam question testing a core derivation, theorem proof, or mathematical calculation.
+Requirements:
+- Demand rigorous derivation steps (e.g. state assumptions, apply definitions, derive intermediate steps).
+- For inline math, formulas, and symbols, use standard LaTeX enclosed in \\( ... \\) (e.g., \\(E[\\mathbf{{X}}]\\), \\(\\Sigma\\), \\(\\varepsilon\\text{{--}}\\delta\\)).
+- For display math, use \\[ ... \\].
+- Return pure JSON with keys:
+  "question": "The question prompt asking the student to outline or prove the concept",
+  "target_concept": "Key theorem or concept tested",
+  "key_hint": "One subtle hint on which theorem, substitution, or matrix identity to start with"
+"""
+
+            message = self._chat_completion(
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.6,
+                max_tokens=500
+            )
+
+            raw_content = message.choices[0].message.content.strip()
+            match = re.search(r'\{.*\}', raw_content, re.DOTALL)
+            data = self._safe_json_loads(match.group(0)) if match else None
+            if data and isinstance(data, dict):
+                return {
+                    "question": data.get("question", f"Prove the central theorem in {title}."),
+                    "target_concept": data.get("target_concept", topic or title),
+                    "key_hint": data.get("key_hint", "Start from first principles.")
+                }
+
+            # Regex fallback extraction if full JSON decode was impeded by LaTeX
+            q_match = re.search(r'"question"\s*:\s*"([^"]+)"', raw_content)
+            hint_match = re.search(r'"key_hint"\s*:\s*"([^"]+)"', raw_content)
+            concept_match = re.search(r'"target_concept"\s*:\s*"([^"]+)"', raw_content)
+            return {
+                "question": q_match.group(1) if q_match else raw_content.replace('```json', '').replace('```', '').strip(),
+                "target_concept": concept_match.group(1) if concept_match else (topic or title),
+                "key_hint": hint_match.group(1) if hint_match else "Work through definitions and verify each equality."
+            }
+        except Exception as err:
+            LOG.error(f"✗ Failed to generate grill question: {err}")
+            return {
+                "question": f"State the primary definition and derive the core identity for {topic or subject_code}.",
+                "target_concept": topic or subject_code,
+                "key_hint": "Recall the fundamental properties and matrix decomposition."
+            }
+
+    def evaluate_proof_submission(self, subject_code, subject_info, question, student_answer):
+        """Evaluate a student's derivation/proof submission with rigor scoring and model solution"""
+        try:
+            title = subject_info.get('title', subject_code)
+            prompt = f"""You are a university mathematics and statistics examiner grading a 3rd-year student's proof submission in {subject_code} - {title}.
+
+Question:
+{question}
+
+Student Submission:
+{student_answer}
+
+Grade this proof rigorously and constructively.
+Requirements:
+1. Score from 1 to 10 based on mathematical rigor, notational precision, and completeness.
+2. Highlight exactly what was correct.
+3. Identify missing steps, logical gaps, or flawed algebra.
+4. Provide a complete, textbook-quality Model Solution.
+5. In all mathematical formulas, use standard LaTeX syntax enclosed in \\( ... \\) for inline math and \\[ ... \\] for display equations.
+
+Return pure JSON with keys:
+{{
+  "score": 8,
+  "rigor_level": "Strong" / "Moderate" / "Needs Work",
+  "feedback": "Overall assessment paragraph",
+  "strengths": ["...", "..."],
+  "missing_steps": ["...", "..."],
+  "model_solution": "Complete step-by-step derivation with LaTeX formulas"
+}}
+"""
+
+            message = self._chat_completion(
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.5,
+                max_tokens=900
+            )
+
+            raw_content = message.choices[0].message.content.strip()
+            match = re.search(r'\{.*\}', raw_content, re.DOTALL)
+            data = self._safe_json_loads(match.group(0)) if match else None
+            if data and isinstance(data, dict):
+                return data
+
+            # Regex fallback extraction
+            score_match = re.search(r'"score"\s*:\s*(\d+)', raw_content)
+            score = int(score_match.group(1)) if score_match else 7
+            feedback_match = re.search(r'"feedback"\s*:\s*"([^"]+)"', raw_content)
+            solution_match = re.search(r'"model_solution"\s*:\s*"([^"]+)"', raw_content)
+
+            return {
+                "score": score,
+                "rigor_level": "Strong" if score >= 8 else ("Moderate" if score >= 5 else "Needs Work"),
+                "feedback": feedback_match.group(1) if feedback_match else raw_content.replace('```json', '').replace('```', '').strip(),
+                "strengths": ["Attempted key mathematical definitions"],
+                "missing_steps": ["Ensure all intermediate inequalities and bounds are stated"],
+                "model_solution": solution_match.group(1) if solution_match else "Refer to course notes for full derivation."
+            }
+        except Exception as err:
+            LOG.error(f"✗ Failed to evaluate proof submission: {err}")
+            return {
+                "score": 5,
+                "rigor_level": "Needs Review",
+                "feedback": "Evaluation could not be fully parsed. Review your derivation steps against textbook proofs.",
+                "strengths": ["Structured attempt"],
+                "missing_steps": ["Verify first-principles assumptions"],
+                "model_solution": "Consult syllabus lecture notes for full derivation."
+            }
+
 # Initialize global AI instance
 ai = None
 

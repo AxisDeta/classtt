@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Weekly Study Scheduler</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260908v6') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260908v8') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
@@ -122,6 +122,7 @@
             <button class="day-pill-btn" data-day="Friday">Fri</button>
             <button class="day-pill-btn" data-day="Saturday">Sat</button>
             <button class="day-pill-btn" data-day="Sunday">Sun</button>
+            <button class="day-pill-btn print-pill-btn" id="printBattlePlanBtn" type="button" title="Print 1-Page Weekly Battle Plan">🖨️ Print Battle Plan</button>
         </div>
 
         <!-- Main Content Area with Dedicated Views -->
@@ -166,8 +167,34 @@
             <div id="viewToday" class="app-view hidden">
                 <div class="section-hero">
                     <h2>Today's Study Target</h2>
-                    <p>Focus strictly on today's sessions. Record progress directly as you complete each block.</p>
+                    <p>Focus strictly on today's sessions, active recall queues, and high-priority weak topics.</p>
                 </div>
+
+                <!-- Spaced Repetition Due Today -->
+                <div id="todayReviewsCard" class="panel-card reviews-card hidden">
+                    <div class="reviews-header">
+                        <div class="reviews-title-wrap">
+                            <span class="reviews-badge" id="reviewsCountBadge">0</span>
+                            <h3>Due for Spaced Review Today</h3>
+                        </div>
+                        <p class="reviews-subtitle">Active recall prompts scheduled from your previous difficult sessions.</p>
+                    </div>
+                    <div id="todayReviewsList" class="reviews-list">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+
+                <!-- Weak Topics Attention Needed -->
+                <div id="todayAttentionCard" class="panel-card attention-card hidden">
+                    <div class="attention-header">
+                        <h3>⚠️ Weak Topics Requiring Attention</h3>
+                        <p>Syllabus modules you marked as 'Needs Work'. Click to review or launch proof simulation.</p>
+                    </div>
+                    <div id="todayAttentionList" class="attention-list">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+
                 <div id="todayFocusFull" class="today-focus-full">
                     <!-- Filled dynamically -->
                 </div>
@@ -258,6 +285,20 @@
                         <h3>Subjects (7 Units)</h3>
                         <div id="subjectsList" class="subjects-list-grid">
                             <!-- Filled dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Exam Milestones & Velocity Countdown -->
+                    <div class="panel-card milestones-card">
+                        <div class="milestones-header">
+                            <div>
+                                <h3>🎯 Exam Countdown & Target Velocity</h3>
+                                <p class="panel-subtitle">Target dates for CATs & Finals with real-time weekly pace requirements.</p>
+                            </div>
+                            <button type="button" class="mini-btn btn-outline" id="addMilestoneBtn">+ Add Exam Target</button>
+                        </div>
+                        <div id="milestonesList" class="milestones-grid">
+                            <!-- Loaded dynamically -->
                         </div>
                     </div>
 
@@ -387,9 +428,24 @@
             <h2 id="modalTitle"></h2>
             <p id="modalDescription"></p>
             <div id="modalOutline" class="modal-outline"></div>
+            <!-- Syllabus Topic Mastery & Confidence Tracker -->
+            <div class="modal-mastery-section" id="modalMasterySection">
+                <div class="mastery-header">
+                    <h4>Syllabus Mastery & Topic Confidence</h4>
+                    <span class="mastery-pill-count" id="modalMasteryCount">Loading topics...</span>
+                </div>
+                <div class="mastery-progress-bar">
+                    <div class="mastery-progress-fill" id="modalMasteryFill" style="width: 0%;"></div>
+                </div>
+                <div class="modal-topics-list" id="modalTopicsList">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+
             <div id="modalSchedule"></div>
             <div class="subject-ai-actions">
                 <button id="subjectTipsBtn" class="mini-btn" type="button">Get AI Tips</button>
+                <button id="subjectGrillBtn" class="mini-btn btn-secondary" type="button" style="margin-left: 8px;">🎯 Grill Me on Proofs</button>
             </div>
             <div id="modalAiOutput" class="modal-ai-output"></div>
         </div>
@@ -414,13 +470,117 @@
                 <label for="recordDuration">Duration (minutes)</label>
                 <input id="recordDuration" name="duration_minutes" type="number" min="10" max="360" step="5" value="60" required>
                 <label for="recordNotes">Notes (optional)</label>
-                <textarea id="recordNotes" name="notes" rows="4" placeholder="What did you cover, struggle with, or understand better?"></textarea>
+                <textarea id="recordNotes" name="notes" rows="3" placeholder="What did you cover, struggle with, or understand better?"></textarea>
+                
+                <!-- Spaced Review Checkbox Trigger -->
+                <div class="form-review-toggle-wrap">
+                    <label class="checkbox-label" for="recordFlagReview">
+                        <input type="checkbox" id="recordFlagReview" name="flag_for_review" value="1">
+                        <span>Struggled with a topic? (Schedule Spaced Review in 3 days)</span>
+                    </label>
+                    <div id="recordStruggledTopicWrap" class="struggled-input-wrap hidden">
+                        <input type="text" id="recordStruggledTopic" name="struggled_topic" placeholder="Specific topic or theorem (e.g. Cauchy Criterion, Rao-Blackwell)" class="form-input">
+                    </div>
+                </div>
+
                 <p id="recordFormFeedback" class="form-feedback" aria-live="polite"></p>
                 <button type="submit" class="submit-btn">Save Session</button>
             </form>
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='script.js', v='20260908v7') }}"></script>
+    <!-- Modal for Oral Exam & Proof Simulator ("Grill Me") -->
+    <div class="modal" id="grillModal">
+        <div class="modal-content grill-modal-content">
+            <button class="modal-close" id="grillModalClose">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+            <div class="grill-header">
+                <span class="modal-subject-tag" id="grillSubjectTag">SMA300</span>
+                <h2>Proof & Oral Exam Simulator</h2>
+            </div>
+            <p class="grill-subtitle" id="grillTopicSubtitle">Testing deep derivation rigor and mathematical proof construction.</p>
+
+            <div class="grill-question-box" id="grillQuestionBox">
+                <div class="grill-q-label">Examiner's Question:</div>
+                <div class="grill-q-text" id="grillQuestionText">Generating exam derivation prompt...</div>
+                <div class="grill-hint-toggle" id="grillHintToggle" style="display: none;">
+                    <button type="button" class="hint-btn" id="grillHintBtn">💡 Show Hint</button>
+                    <p class="hint-text hidden" id="grillHintText"></p>
+                </div>
+            </div>
+
+            <form id="grillAnswerForm" class="grill-form">
+                <label for="grillAnswerInput">Your Step-by-Step Derivation / Proof Steps:</label>
+                <textarea id="grillAnswerInput" rows="5" placeholder="Write out your proof steps, definitions (e.g. \(\varepsilon\)–\(\delta\)), intermediate equalities, or matrix manipulations..." required></textarea>
+                <div class="grill-actions-row">
+                    <button type="submit" class="submit-btn" id="grillSubmitBtn">Submit Proof for Evaluation</button>
+                    <button type="button" class="btn btn-outline" id="grillNewQuestionBtn">Get Another Question</button>
+                </div>
+            </form>
+
+            <div class="grill-evaluation-card hidden" id="grillEvaluationCard">
+                <div class="eval-header">
+                    <h4>Examiner's Rigor Critique</h4>
+                    <span class="eval-score-badge" id="evalScoreBadge">0/10</span>
+                </div>
+                <p id="evalFeedbackText" class="eval-feedback"></p>
+                <div class="eval-strengths-box">
+                    <strong>✓ What You Did Well:</strong>
+                    <ul id="evalStrengthsList"></ul>
+                </div>
+                <div class="eval-gaps-box">
+                    <strong>⚠️ Missing Steps & Pitfalls:</strong>
+                    <ul id="evalGapsList"></ul>
+                </div>
+                <div class="eval-solution-box">
+                    <strong>📘 Complete Model Solution:</strong>
+                    <div id="evalModelSolution" class="eval-model-solution"></div>
+                </div>
+                <div class="eval-actions">
+                    <button type="button" class="btn btn-sm btn-outline" id="evalScheduleReviewBtn">📌 Add to Spaced Review Queue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Adding Exam Milestone -->
+    <div class="modal" id="milestoneModal">
+        <div class="modal-content">
+            <button class="modal-close" id="milestoneModalClose">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+            <h2>Add Exam / CAT Target</h2>
+            <p>Set a target milestone to calculate your required weekly study velocity.</p>
+            <form id="milestoneForm" class="record-session-form">
+                <label for="milestoneSubject">Subject</label>
+                <select id="milestoneSubject" name="subject_code" required>
+                    <option value="SMA300">SMA300 - Real Analysis I</option>
+                    <option value="SST305">SST305 - Theory of Estimation</option>
+                    <option value="SMA335">SMA335 - Ordinary Differential Equations I</option>
+                    <option value="SMA330">SMA330 - Numerical Analysis I</option>
+                    <option value="SST304">SST304 - Multivariate Statistical Methods I</option>
+                    <option value="SST301">SST301 - Programming Language for Statistics I</option>
+                    <option value="SST101">SST101 - Intro to Probability & Statistics (Retake)</option>
+                </select>
+                <label for="milestoneTitle">Exam / Target Title</label>
+                <input type="text" id="milestoneTitle" name="title" placeholder="e.g. CAT 1, Midterm Exam, Final Exam" required>
+                <label for="milestoneDate">Target Date</label>
+                <input type="date" id="milestoneDate" name="target_date" required>
+                <label for="milestoneHours">Target Preparation Hours</label>
+                <input type="number" id="milestoneHours" name="target_hours" value="20" min="5" max="100" step="1" required>
+                <p id="milestoneFormFeedback" class="form-feedback"></p>
+                <button type="submit" class="submit-btn">Save Exam Target</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js', v='20260908v8') }}"></script>
 </body>
 </html>

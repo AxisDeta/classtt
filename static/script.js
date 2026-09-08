@@ -45,6 +45,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     populateSubjectsList();
     updateTodaysFocus();
     await refreshProgressAndInsights();
+    loadDueReviews();
+    loadAttentionTopics();
+    loadMilestones();
 });
 
 // Theme Management
@@ -324,6 +327,139 @@ function initializeEventListeners() {
 
     if (recordSessionForm) {
         recordSessionForm.addEventListener('submit', handleRecordSubmit);
+    }
+
+    // Spaced review checkbox toggle in record modal
+    const flagCheck = document.getElementById('recordFlagReview');
+    const struggledWrap = document.getElementById('recordStruggledTopicWrap');
+    if (flagCheck && struggledWrap) {
+        flagCheck.addEventListener('change', () => {
+            if (flagCheck.checked) {
+                struggledWrap.classList.remove('hidden');
+                const inp = document.getElementById('recordStruggledTopic');
+                if (inp) inp.focus();
+            } else {
+                struggledWrap.classList.add('hidden');
+            }
+        });
+    }
+
+    // Print 1-page weekly battle plan
+    const printBtn = document.getElementById('printBattlePlanBtn');
+    if (printBtn) {
+        printBtn.addEventListener('click', () => {
+            window.print();
+        });
+    }
+
+    // Subject Grill Me button in subject modal
+    const subjectGrillBtn = document.getElementById('subjectGrillBtn');
+    if (subjectGrillBtn) {
+        subjectGrillBtn.addEventListener('click', () => {
+            if (!activeSubjectCode) {
+                showNotification('Please select a subject first', 'info');
+                return;
+            }
+            openGrillModal(activeSubjectCode);
+        });
+    }
+
+    // Grill Modal events
+    const grillModal = document.getElementById('grillModal');
+    const grillModalClose = document.getElementById('grillModalClose');
+    if (grillModalClose && grillModal) {
+        grillModalClose.addEventListener('click', () => {
+            grillModal.classList.remove('active');
+        });
+        grillModal.addEventListener('click', (e) => {
+            if (e.target === grillModal) grillModal.classList.remove('active');
+        });
+    }
+
+    const grillHintBtn = document.getElementById('grillHintBtn');
+    const grillHintText = document.getElementById('grillHintText');
+    if (grillHintBtn && grillHintText) {
+        grillHintBtn.addEventListener('click', () => {
+            grillHintText.classList.toggle('hidden');
+        });
+    }
+
+    const grillNewQuestionBtn = document.getElementById('grillNewQuestionBtn');
+    if (grillNewQuestionBtn) {
+        grillNewQuestionBtn.addEventListener('click', () => {
+            if (activeSubjectCode) {
+                fetchGrillQuestion(activeSubjectCode, currentGrillTopic);
+            }
+        });
+    }
+
+    const grillAnswerForm = document.getElementById('grillAnswerForm');
+    if (grillAnswerForm) {
+        grillAnswerForm.addEventListener('submit', handleGrillAnswerSubmit);
+    }
+
+    const evalScheduleReviewBtn = document.getElementById('evalScheduleReviewBtn');
+    if (evalScheduleReviewBtn) {
+        evalScheduleReviewBtn.addEventListener('click', async () => {
+            if (!activeSubjectCode) return;
+            evalScheduleReviewBtn.disabled = true;
+            evalScheduleReviewBtn.textContent = 'Scheduling...';
+            try {
+                const res = await fetch('/api/reviews/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        subject_code: activeSubjectCode,
+                        topic: currentGrillTopic || (currentGrillQuestion ? currentGrillQuestion.substring(0, 60) + '...' : 'Proof Derivation Practice'),
+                        interval_days: 3
+                    })
+                });
+                if (res.ok) {
+                    showNotification('Added to 3-day spaced recall queue!', 'success');
+                    evalScheduleReviewBtn.textContent = '✓ Scheduled for Recall';
+                    loadDueReviews();
+                } else {
+                    showNotification('Failed to schedule review', 'error');
+                    evalScheduleReviewBtn.disabled = false;
+                    evalScheduleReviewBtn.textContent = '📌 Add to Spaced Review Queue';
+                }
+            } catch (err) {
+                showNotification('Network error scheduling review', 'error');
+                evalScheduleReviewBtn.disabled = false;
+                evalScheduleReviewBtn.textContent = '📌 Add to Spaced Review Queue';
+            }
+        });
+    }
+
+    // Milestones Modal & Form
+    const milestoneModal = document.getElementById('milestoneModal');
+    const milestoneModalClose = document.getElementById('milestoneModalClose');
+    const addMilestoneBtn = document.getElementById('addMilestoneBtn');
+    const milestoneForm = document.getElementById('milestoneForm');
+
+    if (addMilestoneBtn && milestoneModal) {
+        addMilestoneBtn.addEventListener('click', () => {
+            milestoneModal.classList.add('active');
+            const dateInput = document.getElementById('milestoneDate');
+            if (dateInput && !dateInput.value) {
+                const future = new Date();
+                future.setDate(future.getDate() + 21);
+                dateInput.value = future.toISOString().split('T')[0];
+            }
+        });
+    }
+
+    if (milestoneModalClose && milestoneModal) {
+        milestoneModalClose.addEventListener('click', () => {
+            milestoneModal.classList.remove('active');
+        });
+        milestoneModal.addEventListener('click', (e) => {
+            if (e.target === milestoneModal) milestoneModal.classList.remove('active');
+        });
+    }
+
+    if (milestoneForm) {
+        milestoneForm.addEventListener('submit', handleMilestoneSubmit);
     }
 }
 
@@ -689,6 +825,7 @@ function showSubjectModal(subjectCode) {
 
     document.getElementById('modalSchedule').innerHTML = schedule;
     document.getElementById('modalAiOutput').textContent = 'Use the AI button above for personalized tips and exam preparation guidance.';
+    loadSubjectTopics(subjectCode);
     modal.classList.add('active');
     renderMath(modal);
 }
@@ -710,6 +847,15 @@ function openRecordModal(subjectCode, sessionType, timeWindow) {
         feedback.textContent = '';
         feedback.className = 'form-feedback';
     }
+    const flagCheck = document.getElementById('recordFlagReview');
+    const wrap = document.getElementById('recordStruggledTopicWrap');
+    const topicInput = document.getElementById('recordStruggledTopic');
+    if (flagCheck) flagCheck.checked = false;
+    if (wrap) wrap.classList.add('hidden');
+    if (topicInput) topicInput.value = '';
+    const reviewToggleWrap = document.querySelector('.form-review-toggle-wrap');
+    if (reviewToggleWrap) reviewToggleWrap.style.display = 'block';
+
     context.textContent = `${subjectCode} | ${sessionType.replace('-', ' ')} | ${timeWindow}`;
     modal.classList.add('active');
 }
@@ -731,6 +877,9 @@ function openFreeTaskRecordModal(task) {
         feedback.textContent = '';
         feedback.className = 'form-feedback';
     }
+    const reviewToggleWrap = document.querySelector('.form-review-toggle-wrap');
+    if (reviewToggleWrap) reviewToggleWrap.style.display = 'none';
+
     context.textContent = `${task.title} | ${task.tag} | planned ${task.day} ${task.time}`;
     modal.classList.add('active');
 }
@@ -754,6 +903,10 @@ async function handleRecordSubmit(event) {
     const recordMode = document.getElementById('recordMode').value;
     const durationMinutes = parseInt(document.getElementById('recordDuration').value, 10);
     const notes = document.getElementById('recordNotes').value.trim();
+    const flagCheck = document.getElementById('recordFlagReview');
+    const topicInput = document.getElementById('recordStruggledTopic');
+    const flagForReview = flagCheck ? flagCheck.checked : false;
+    const struggledTopic = topicInput ? topicInput.value.trim() : '';
 
     if ((recordMode === 'study' && !subjectCode) || (recordMode === 'free-task' && !taskId) || !sessionType || !durationMinutes || durationMinutes <= 0) {
         if (feedback) {
@@ -776,7 +929,7 @@ async function handleRecordSubmit(event) {
     try {
         const result = recordMode === 'free-task'
             ? await completeFreeTask(taskId, durationMinutes, notes)
-            : await recordStudyProgress(subjectCode, sessionType, durationMinutes, notes);
+            : await recordStudyProgress(subjectCode, sessionType, durationMinutes, notes, flagForReview, struggledTopic);
         if (result) {
             if (feedback) {
                 feedback.textContent = result.message || 'Session saved successfully.';
@@ -812,6 +965,7 @@ async function refreshProgressAndInsights() {
     renderCharts(progress);
     renderRecommendations(recommendations);
     renderWeeklyInsights(insights);
+    await loadMilestones();
 }
 
 function renderProgressOverview(progressRows, weeklyData) {
@@ -1494,6 +1648,9 @@ function updateTodaysFocus() {
             });
         }
     }
+
+    loadDueReviews();
+    loadAttentionTopics();
 }
 
 // Get current day name based on local date
@@ -1524,7 +1681,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==================== PROGRESS TRACKING & AI FUNCTIONS ====================
 
 // Record a study session
-async function recordStudyProgress(subjectCode, sessionType, durationMinutes, notes = '') {
+async function recordStudyProgress(subjectCode, sessionType, durationMinutes, notes = '', flagForReview = false, struggledTopic = '') {
     try {
         const response = await fetch('/api/progress/record', {
             method: 'POST',
@@ -1535,7 +1692,9 @@ async function recordStudyProgress(subjectCode, sessionType, durationMinutes, no
                 subject_code: subjectCode,
                 session_type: sessionType,
                 duration_minutes: durationMinutes,
-                notes: notes
+                notes: notes,
+                flag_for_review: flagForReview ? 1 : 0,
+                struggled_topic: struggledTopic
             })
         });
 
@@ -1976,4 +2135,565 @@ function initKeyboardShortcuts() {
             activeModals.forEach(m => m.classList.remove('active'));
         }
     });
+}
+
+
+// ==================== TOPIC MASTERY & WEAKNESS HEATMAP ====================
+
+async function loadSubjectTopics(subjectCode) {
+    const listEl = document.getElementById('modalTopicsList');
+    const countEl = document.getElementById('modalMasteryCount');
+    const fillEl = document.getElementById('modalMasteryFill');
+    if (!listEl) return;
+
+    listEl.innerHTML = '<div class="topic-loading" style="padding: 12px 0; color: var(--text-secondary); font-size: 0.85rem;"><i class="fas fa-spinner fa-spin"></i> Loading syllabus topics...</div>';
+    try {
+        const res = await fetch(`/api/topics/${subjectCode}`);
+        const data = await res.json();
+        if (data.ok && data.topics && data.topics.length > 0) {
+            renderTopicMasteryList(subjectCode, data.topics);
+        } else {
+            listEl.innerHTML = '<div class="topic-empty-note" style="padding: 10px 0; color: var(--text-secondary); font-size: 0.85rem;">No syllabus subtopics loaded for this subject.</div>';
+            if (countEl) countEl.textContent = '0/0 Mastered';
+            if (fillEl) fillEl.style.width = '0%';
+        }
+    } catch (err) {
+        console.error('Failed to load subject topics:', err);
+        listEl.innerHTML = '<div class="topic-error-note" style="color: var(--danger); font-size: 0.85rem;">Failed to load syllabus topics.</div>';
+    }
+}
+
+function renderTopicMasteryList(subjectCode, topics) {
+    const listEl = document.getElementById('modalTopicsList');
+    if (!listEl) return;
+
+    listEl.innerHTML = '';
+
+    topics.forEach(t => {
+        const item = document.createElement('div');
+        item.className = 'topic-mastery-item';
+        item.dataset.topicId = t.id;
+
+        item.innerHTML = `
+            <div class="topic-main-info">
+                <div class="topic-title-row">
+                    <span class="topic-title">${escapeHtml(t.title)}</span>
+                    <button type="button" class="topic-drill-btn" title="Grill me on this topic">🎯 Drill</button>
+                </div>
+                ${t.description ? `<div class="topic-desc">${formatInlineMarkdown(t.description)}</div>` : ''}
+            </div>
+            <div class="topic-status-pills">
+                <button type="button" class="status-pill-btn pill-needs-work ${t.status === 'needs-work' ? 'active' : ''}" data-status="needs-work" title="Mark as Needs Work">⚠️ Needs Work</button>
+                <button type="button" class="status-pill-btn pill-reviewing ${t.status === 'reviewing' ? 'active' : ''}" data-status="reviewing" title="Mark as Reviewing">🔄 Reviewing</button>
+                <button type="button" class="status-pill-btn pill-mastered ${t.status === 'mastered' ? 'active' : ''}" data-status="mastered" title="Mark as Mastered">✓ Mastered</button>
+            </div>
+        `;
+
+        // Pill clicks
+        item.querySelectorAll('.status-pill-btn').forEach(pill => {
+            pill.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const newStatus = pill.dataset.status;
+                const ok = await updateTopicStatus(subjectCode, t.id, newStatus);
+                if (ok) {
+                    item.querySelectorAll('.status-pill-btn').forEach(p => p.classList.remove('active'));
+                    pill.classList.add('active');
+                    t.status = newStatus;
+                    updateMasteryStats(topics);
+                    loadAttentionTopics();
+                }
+            });
+        });
+
+        // Drill button
+        const drillBtn = item.querySelector('.topic-drill-btn');
+        if (drillBtn) {
+            drillBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openGrillModal(subjectCode, t.title);
+            });
+        }
+
+        listEl.appendChild(item);
+    });
+
+    updateMasteryStats(topics);
+    renderMath(listEl);
+}
+
+function updateMasteryStats(topics) {
+    const countEl = document.getElementById('modalMasteryCount');
+    const fillEl = document.getElementById('modalMasteryFill');
+    if (!countEl || !fillEl) return;
+
+    const total = topics.length;
+    const mastered = topics.filter(t => t.status === 'mastered').length;
+    const pct = total > 0 ? Math.round((mastered / total) * 100) : 0;
+    countEl.textContent = `${mastered}/${total} Mastered (${pct}%)`;
+    fillEl.style.width = `${pct}%`;
+}
+
+async function updateTopicStatus(subjectCode, topicId, status) {
+    try {
+        const res = await fetch(`/api/topics/${subjectCode}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topic_id: topicId, status: status })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showNotification(`Topic marked as ${status.replace('-', ' ')}`, 'success');
+            return true;
+        } else {
+            showNotification(data.error || 'Failed to update topic status', 'error');
+            return false;
+        }
+    } catch (err) {
+        console.error('Error updating topic status:', err);
+        showNotification('Network error updating topic', 'error');
+        return false;
+    }
+}
+
+// ==================== SPACED REPETITION REVIEW QUEUE ====================
+
+async function loadDueReviews() {
+    const card = document.getElementById('todayReviewsCard');
+    const list = document.getElementById('todayReviewsList');
+    const badge = document.getElementById('reviewsCountBadge');
+    if (!card || !list) return;
+
+    try {
+        const res = await fetch('/api/reviews/due');
+        const data = await res.json();
+        if (res.ok && data.reviews && data.reviews.length > 0) {
+            card.classList.remove('hidden');
+            if (badge) badge.textContent = data.reviews.length;
+            list.innerHTML = '';
+
+            data.reviews.forEach(rev => {
+                const item = document.createElement('div');
+                item.className = 'review-queue-item';
+                const subj = subjects[rev.subject_code] || { color: '#667eea', title: rev.subject_code };
+                item.innerHTML = `
+                    <div class="review-queue-info">
+                        <div class="review-queue-header">
+                            <span class="subject-tag-badge" style="background-color: ${subj.color || '#667eea'};">${escapeHtml(rev.subject_code)}</span>
+                            <span class="review-interval-pill">${rev.interval_days}d Recall</span>
+                            ${rev.due_label ? `<span class="review-due-tag ${rev.is_overdue ? 'overdue' : ''}">${escapeHtml(rev.due_label)}</span>` : ''}
+                        </div>
+                        <div class="review-queue-topic"><strong>${escapeHtml(rev.topic)}</strong></div>
+                    </div>
+                    <div class="review-queue-actions">
+                        <button type="button" class="btn btn-sm btn-outline review-grill-btn">🎯 Grill Me</button>
+                        <button type="button" class="btn btn-sm btn-primary review-done-btn">✓ Done</button>
+                    </div>
+                `;
+
+                // Done button
+                item.querySelector('.review-done-btn').addEventListener('click', async () => {
+                    const ok = await completeReviewItem(rev.id);
+                    if (ok) {
+                        item.style.opacity = '0.4';
+                        item.style.pointerEvents = 'none';
+                        setTimeout(() => loadDueReviews(), 500);
+                    }
+                });
+
+                // Grill Me button
+                item.querySelector('.review-grill-btn').addEventListener('click', () => {
+                    openGrillModal(rev.subject_code, rev.topic);
+                });
+
+                list.appendChild(item);
+            });
+        } else {
+            card.classList.add('hidden');
+        }
+    } catch (err) {
+        console.error('Failed to load due reviews:', err);
+        card.classList.add('hidden');
+    }
+}
+
+async function completeReviewItem(reviewId) {
+    try {
+        const res = await fetch(`/api/reviews/${reviewId}/complete`, { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+            showNotification('Spaced review completed!', 'success');
+            return true;
+        } else {
+            showNotification(data.error || 'Failed to complete review', 'error');
+            return false;
+        }
+    } catch (err) {
+        console.error('Error completing review:', err);
+        showNotification('Network error completing review', 'error');
+        return false;
+    }
+}
+
+// ==================== WEAK TOPICS ATTENTION ====================
+
+async function loadAttentionTopics() {
+    const card = document.getElementById('todayAttentionCard');
+    const list = document.getElementById('todayAttentionList');
+    if (!card || !list) return;
+
+    try {
+        const res = await fetch('/api/topics/attention-needed');
+        const data = await res.json();
+        if (res.ok && data.attention && data.attention.length > 0) {
+            card.classList.remove('hidden');
+            list.innerHTML = '';
+            data.attention.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'attention-topic-item';
+                const subj = subjects[item.subject_code] || { color: '#ef4444', title: item.subject_code };
+                el.innerHTML = `
+                    <div class="attention-info">
+                        <span class="subject-tag-badge" style="background-color: ${subj.color || '#ef4444'};">${escapeHtml(item.subject_code)}</span>
+                        <span class="attention-title">${escapeHtml(item.title)}</span>
+                    </div>
+                    <div class="attention-actions">
+                        <button type="button" class="btn btn-sm btn-outline attention-drill-btn">🎯 Proof Drill</button>
+                        <button type="button" class="btn btn-sm btn-secondary attention-review-btn">Open Syllabus</button>
+                    </div>
+                `;
+
+                el.querySelector('.attention-drill-btn').addEventListener('click', () => {
+                    openGrillModal(item.subject_code, item.title);
+                });
+
+                el.querySelector('.attention-review-btn').addEventListener('click', () => {
+                    showSubjectModal(item.subject_code);
+                });
+
+                list.appendChild(el);
+            });
+        } else {
+            card.classList.add('hidden');
+        }
+    } catch (err) {
+        console.error('Failed to load attention topics:', err);
+        card.classList.add('hidden');
+    }
+}
+
+// ==================== ORAL EXAM & PROOF SIMULATOR ("GRILL ME") ====================
+
+let currentGrillSubject = null;
+let currentGrillTopic = null;
+let currentGrillQuestion = null;
+
+async function openGrillModal(subjectCode, topic = null) {
+    currentGrillSubject = subjectCode;
+    currentGrillTopic = topic;
+    activeSubjectCode = subjectCode;
+
+    const modal = document.getElementById('grillModal');
+    if (!modal) return;
+
+    const subjectTag = document.getElementById('grillSubjectTag');
+    const topicSubtitle = document.getElementById('grillTopicSubtitle');
+    const evalCard = document.getElementById('grillEvaluationCard');
+    const answerInput = document.getElementById('grillAnswerInput');
+    const hintToggle = document.getElementById('grillHintToggle');
+    const hintText = document.getElementById('grillHintText');
+
+    if (subjectTag) subjectTag.textContent = subjectCode;
+    if (topicSubtitle) {
+        topicSubtitle.textContent = topic
+            ? `Target Topic: ${topic} — Rigorous proof & derivation critique.`
+            : `Testing deep derivation rigor and mathematical proof construction for ${subjectCode}.`;
+    }
+    if (answerInput) answerInput.value = '';
+    if (evalCard) evalCard.classList.add('hidden');
+    if (hintToggle) hintToggle.style.display = 'none';
+    if (hintText) {
+        hintText.classList.add('hidden');
+        hintText.textContent = '';
+    }
+
+    modal.classList.add('active');
+    await fetchGrillQuestion(subjectCode, topic);
+}
+
+async function fetchGrillQuestion(subjectCode, topic = null) {
+    const questionText = document.getElementById('grillQuestionText');
+    const hintToggle = document.getElementById('grillHintToggle');
+    const hintText = document.getElementById('grillHintText');
+    const submitBtn = document.getElementById('grillSubmitBtn');
+
+    if (questionText) {
+        questionText.innerHTML = '<div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); padding: 12px 0;"><i class="fas fa-spinner fa-spin"></i> Formulating examiner proof question...</div>';
+    }
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+        const res = await fetch('/api/ai/grill/question', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject_code: subjectCode, topic: topic })
+        });
+        const data = await res.json();
+        if (res.ok && data.question) {
+            currentGrillQuestion = data.question;
+            if (questionText) {
+                questionText.innerHTML = formatTextForDisplay(data.question);
+                renderMath(questionText);
+            }
+            if (data.hint && hintToggle && hintText) {
+                hintToggle.style.display = 'block';
+                hintText.innerHTML = formatTextForDisplay(data.hint);
+                renderMath(hintText);
+            }
+            if (submitBtn) submitBtn.disabled = false;
+        } else {
+            if (questionText) {
+                questionText.innerHTML = `<div style="color: var(--danger);">${escapeHtml(data.error || 'Failed to formulate examiner question.')}</div>`;
+            }
+        }
+    } catch (err) {
+        console.error('Error fetching grill question:', err);
+        if (questionText) {
+            questionText.innerHTML = '<div style="color: var(--danger);">Network error generating question.</div>';
+        }
+    }
+}
+
+async function handleGrillAnswerSubmit(e) {
+    e.preventDefault();
+    const answerInput = document.getElementById('grillAnswerInput');
+    const answer = answerInput ? answerInput.value.trim() : '';
+    if (!answer) {
+        showNotification('Please enter your proof derivation before submitting.', 'info');
+        return;
+    }
+
+    const submitBtn = document.getElementById('grillSubmitBtn');
+    const evalCard = document.getElementById('grillEvaluationCard');
+    const scoreBadge = document.getElementById('evalScoreBadge');
+    const feedbackText = document.getElementById('evalFeedbackText');
+    const strengthsList = document.getElementById('evalStrengthsList');
+    const gapsList = document.getElementById('evalGapsList');
+    const solutionBox = document.getElementById('evalModelSolution');
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Evaluating Proof Rigor...';
+    }
+
+    try {
+        const res = await fetch('/api/ai/grill/evaluate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                subject_code: currentGrillSubject,
+                topic: currentGrillTopic || '',
+                question: currentGrillQuestion,
+                student_answer: answer
+            })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.evaluation) {
+            const ev = data.evaluation;
+            evalCard.classList.remove('hidden');
+
+            const score = ev.score !== undefined ? ev.score : (ev.rigor_score || 0);
+            scoreBadge.textContent = `${score}/10`;
+            scoreBadge.className = 'eval-score-badge ' + (score >= 8 ? 'score-high' : (score >= 5 ? 'score-med' : 'score-low'));
+
+            feedbackText.innerHTML = formatTextForDisplay(ev.feedback || '');
+
+            strengthsList.innerHTML = '';
+            (ev.strengths || []).forEach(s => {
+                const li = document.createElement('li');
+                li.innerHTML = formatTextForDisplay(s);
+                strengthsList.appendChild(li);
+            });
+
+            gapsList.innerHTML = '';
+            (ev.missing_steps || ev.gaps || []).forEach(g => {
+                const li = document.createElement('li');
+                li.innerHTML = formatTextForDisplay(g);
+                gapsList.appendChild(li);
+            });
+
+            if (solutionBox) {
+                solutionBox.innerHTML = formatTextForDisplay(ev.model_solution || 'No model solution provided.');
+            }
+
+            renderMath(evalCard);
+            evalCard.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            showNotification(data.error || 'Failed to evaluate proof.', 'error');
+        }
+    } catch (err) {
+        console.error('Error evaluating proof:', err);
+        showNotification('Network error during proof evaluation.', 'error');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Submit Proof for Evaluation';
+        }
+    }
+}
+
+// ==================== EXAM COUNTDOWN & VELOCITY CALCULATOR ====================
+
+async function loadMilestones() {
+    const list = document.getElementById('milestonesList');
+    if (!list) return;
+
+    try {
+        const res = await fetch('/api/milestones');
+        const data = await res.json();
+        if (res.ok && data.milestones) {
+            renderMilestones(data.milestones);
+        }
+    } catch (err) {
+        console.error('Failed to load milestones:', err);
+    }
+}
+
+function renderMilestones(milestones) {
+    const list = document.getElementById('milestonesList');
+    if (!list) return;
+
+    if (milestones.length === 0) {
+        list.innerHTML = `
+            <div class="milestones-empty" style="padding: 1rem; color: var(--text-secondary); text-align: center;">
+                <p>No exam milestones set yet. Click <strong>+ Add Exam Target</strong> to set your CAT and Finals dates and calculate your target weekly hours.</p>
+            </div>
+        `;
+        return;
+    }
+
+    list.innerHTML = '';
+    milestones.forEach(m => {
+        const subj = subjects[m.subject_code] || { color: '#667eea', title: m.subject_code };
+        const card = document.createElement('div');
+        card.className = 'milestone-item-card';
+
+        const daysLeft = m.days_remaining !== undefined ? m.days_remaining : 0;
+        let daysClass = 'days-normal';
+        let daysText = `${daysLeft} days`;
+        if (daysLeft < 0) {
+            daysClass = 'days-past';
+            daysText = 'Past';
+        } else if (daysLeft === 0) {
+            daysClass = 'days-urgent';
+            daysText = 'TODAY!';
+        } else if (daysLeft <= 7) {
+            daysClass = 'days-urgent';
+            daysText = `${daysLeft}d (This Week!)`;
+        } else if (daysLeft <= 21) {
+            daysClass = 'days-warning';
+            daysText = `${daysLeft} days`;
+        }
+
+        card.innerHTML = `
+            <div class="milestone-card-header">
+                <span class="subject-tag-badge" style="background-color: ${subj.color || '#667eea'};">${escapeHtml(m.subject_code)}</span>
+                <span class="milestone-days-badge ${daysClass}">${daysText}</span>
+            </div>
+            <h4 class="milestone-title">${escapeHtml(m.title)}</h4>
+            <div class="milestone-date-label">📅 Target: ${escapeHtml(m.target_date)}</div>
+            <div class="milestone-velocity-box">
+                <div class="velocity-row">
+                    <span class="velocity-label">Required Velocity:</span>
+                    <span class="velocity-value">${m.velocity_hours_per_week || 0} hrs/week</span>
+                </div>
+                <div class="velocity-progress-row">
+                    <span>${m.completed_hours || 0}h / ${m.target_hours || 0}h prepped</span>
+                    <span>${m.progress_pct || 0}%</span>
+                </div>
+                <div class="velocity-bar">
+                    <div class="velocity-fill" style="width: ${Math.min(100, m.progress_pct || 0)}%;"></div>
+                </div>
+            </div>
+            <div class="milestone-card-actions">
+                <button type="button" class="milestone-del-btn" title="Delete milestone">✕ Delete</button>
+            </div>
+        `;
+
+        card.querySelector('.milestone-del-btn').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete exam target "${m.title}"?`)) {
+                await deleteMilestone(m.id);
+                await loadMilestones();
+            }
+        });
+
+        list.appendChild(card);
+    });
+}
+
+async function deleteMilestone(milestoneId) {
+    try {
+        const res = await fetch(`/api/milestones/${milestoneId}`, { method: 'DELETE' });
+        if (res.ok) {
+            showNotification('Exam milestone deleted', 'info');
+        }
+    } catch (err) {
+        console.error('Failed to delete milestone:', err);
+    }
+}
+
+async function handleMilestoneSubmit(e) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const feedback = document.getElementById('milestoneFormFeedback');
+
+    const subjectCode = document.getElementById('milestoneSubject').value;
+    const title = document.getElementById('milestoneTitle').value.trim();
+    const targetDate = document.getElementById('milestoneDate').value;
+    const targetHours = parseFloat(document.getElementById('milestoneHours').value) || 20;
+
+    if (!subjectCode || !title || !targetDate) {
+        if (feedback) feedback.textContent = 'Please fill out all required fields.';
+        return;
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Saving...';
+    }
+
+    try {
+        const res = await fetch('/api/milestones', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                subject_code: subjectCode,
+                title: title,
+                target_date: targetDate,
+                target_hours: targetHours
+            })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            showNotification('Exam milestone target saved!', 'success');
+            const modal = document.getElementById('milestoneModal');
+            if (modal) modal.classList.remove('active');
+            form.reset();
+            if (feedback) feedback.textContent = '';
+            await loadMilestones();
+        } else {
+            if (feedback) feedback.textContent = data.error || 'Failed to save milestone.';
+        }
+    } catch (err) {
+        console.error('Error saving milestone:', err);
+        if (feedback) feedback.textContent = 'Network error saving milestone.';
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Save Exam Target';
+        }
+    }
 }

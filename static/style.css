@@ -2302,3 +2302,601 @@ html[data-theme="light"] .moon-icon { display: block; }
         padding: 1.75rem 1.25rem;
     }
 }
+
+/* ==================== ACADEMIC SUCCESS & EXAM MASTERY STYLES ==================== */
+
+/* 1. Print Battle Plan Button */
+.print-pill-btn {
+    margin-left: auto;
+    background: var(--bg-surface) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+    font-weight: 600;
+}
+.print-pill-btn:hover {
+    background: var(--bg-muted) !important;
+    border-color: var(--primary) !important;
+    color: var(--primary) !important;
+}
+
+/* 2. Spaced Repetition Due Today Card */
+.reviews-card {
+    border-left: 4px solid var(--primary);
+    margin-bottom: 1.25rem;
+}
+.reviews-header {
+    margin-bottom: 0.85rem;
+}
+.reviews-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+.reviews-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 9999px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+.reviews-subtitle {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+.reviews-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+.review-card-item {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    transition: var(--transition);
+}
+.review-card-item:hover {
+    border-color: var(--border-hover);
+}
+.review-item-main {
+    flex: 1;
+}
+.review-item-top {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+.review-subj-tag {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #fff;
+}
+.review-stage-tag {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    background: var(--badge-bg);
+    color: var(--text-secondary);
+    border: 1px solid var(--badge-border);
+}
+.review-topic-title {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    margin-bottom: 0.2rem;
+}
+.review-reason-text {
+    font-size: 0.775rem;
+    color: var(--text-muted);
+}
+.review-complete-btn {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: var(--transition);
+}
+.review-complete-btn:hover {
+    background: var(--success);
+    color: #fff;
+    border-color: var(--success);
+}
+
+/* 3. Attention Needed (Weak Topics) Card */
+.attention-card {
+    border-left: 4px solid var(--danger);
+    margin-bottom: 1.25rem;
+}
+.attention-header h3 {
+    margin-bottom: 0.25rem;
+    font-size: 1rem;
+}
+.attention-header p {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+}
+.attention-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.65rem;
+}
+.attention-topic-item {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.65rem 0.85rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+.attention-item-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+.attention-topic-name {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.attention-grill-btn {
+    padding: 0.25rem 0.55rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 4px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: var(--transition);
+}
+.attention-grill-btn:hover {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+/* 4. Topic Mastery Checklist inside Subject Modal */
+.modal-mastery-section {
+    margin: 1.25rem 0;
+    padding: 1rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+}
+.mastery-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+.mastery-header h4 {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+.mastery-pill-count {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    background: var(--badge-bg);
+    color: var(--text-secondary);
+    border: 1px solid var(--badge-border);
+}
+.mastery-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--bg-muted);
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-bottom: 0.85rem;
+}
+.mastery-progress-fill {
+    height: 100%;
+    background: var(--success);
+    transition: width 0.3s ease;
+}
+.modal-topics-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 280px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.topic-mastery-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.8125rem;
+}
+.topic-title-col {
+    flex: 1;
+    min-width: 0;
+}
+.topic-module-sub {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-bottom: 0.15rem;
+}
+.topic-name-text {
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+.topic-actions-col {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+}
+.status-pill-group {
+    display: flex;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+.status-pill-btn {
+    padding: 3px 7px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: none;
+    background: var(--bg-card);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.status-pill-btn:not(:last-child) {
+    border-right: 1px solid var(--border-color);
+}
+.status-pill-btn.active.needs-work {
+    background: #fef2f2;
+    color: #ef4444;
+    font-weight: 700;
+}
+.status-pill-btn.active.reviewing {
+    background: #fffbeb;
+    color: #f59e0b;
+    font-weight: 700;
+}
+.status-pill-btn.active.mastered {
+    background: #f0fdf4;
+    color: #10b981;
+    font-weight: 700;
+}
+.topic-grill-action-btn {
+    padding: 3px 6px;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.topic-grill-action-btn:hover {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+/* 5. Oral Exam / Proof Simulator ("Grill Me") Modal */
+.grill-modal-content {
+    max-width: 680px !important;
+}
+.grill-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+.grill-subtitle {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+}
+.grill-question-box {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+.grill-q-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--primary);
+    margin-bottom: 0.35rem;
+}
+.grill-q-text {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--text-primary);
+}
+.grill-hint-toggle {
+    margin-top: 0.65rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+}
+.hint-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.775rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+.hint-btn:hover {
+    color: var(--primary);
+}
+.hint-text {
+    margin-top: 0.35rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+.grill-form textarea {
+    width: 100%;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    font-family: inherit;
+    resize: vertical;
+    margin: 0.35rem 0 0.75rem 0;
+}
+.grill-form textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+.grill-actions-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.grill-evaluation-card {
+    margin-top: 1.25rem;
+    padding: 1rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+}
+.eval-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.eval-header h4 {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.eval-score-badge {
+    font-size: 0.875rem;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    background: var(--primary);
+    color: #fff;
+}
+.eval-feedback {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    margin-bottom: 0.85rem;
+}
+.eval-strengths-box, .eval-gaps-box, .eval-solution-box {
+    margin-bottom: 0.75rem;
+    font-size: 0.8125rem;
+}
+.eval-strengths-box ul, .eval-gaps-box ul {
+    margin: 0.35rem 0 0 1.25rem;
+    padding: 0;
+}
+.eval-strengths-box li {
+    color: var(--success);
+    margin-bottom: 0.2rem;
+}
+.eval-gaps-box li {
+    color: #f59e0b;
+    margin-bottom: 0.2rem;
+}
+.eval-model-solution {
+    margin-top: 0.35rem;
+    padding: 0.65rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+}
+.eval-actions {
+    margin-top: 0.85rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* 6. Spaced Review Toggle in Record Modal */
+.form-review-toggle-wrap {
+    margin: 0.5rem 0 0.75rem 0;
+    padding: 0.65rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+}
+.form-review-toggle-wrap .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.struggled-input-wrap {
+    margin-top: 0.5rem;
+}
+.struggled-input-wrap input {
+    width: 100%;
+    padding: 0.4rem 0.65rem;
+    font-size: 0.8125rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+/* 7. Milestones & Exam Velocity Card */
+.milestones-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.85rem;
+}
+.panel-subtitle {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    margin: 0.15rem 0 0 0;
+}
+.milestones-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.85rem;
+}
+.milestone-item-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.65rem;
+    transition: var(--transition);
+}
+.milestone-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.milestone-target-title {
+    font-weight: 700;
+    font-size: 0.9375rem;
+    color: var(--text-primary);
+}
+.milestone-days-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    background: var(--primary);
+    color: #fff;
+}
+.milestone-days-badge.urgent {
+    background: var(--danger);
+}
+.milestone-stats-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.775rem;
+    color: var(--text-muted);
+}
+.milestone-velocity-text {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* ==================== 8. PRINT BATTLE PLAN STYLESHEET ==================== */
+@media print {
+    /* Hide non-printable elements */
+    .header-nav, .mobile-nav-bar, .day-pills-bar, .timer-controls, 
+    .modal, .auth-status, .subject-ai-actions, .mini-btn, .btn,
+    #todayReviewsCard, #todayAttentionCard {
+        display: none !important;
+    }
+
+    body, .container, .main-content {
+        background: #fff !important;
+        color: #000 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        max-width: 100% !important;
+    }
+
+    .header {
+        border-bottom: 2px solid #000 !important;
+        padding-bottom: 8px !important;
+        margin-bottom: 12px !important;
+    }
+
+    .header h1 {
+        font-size: 1.25rem !important;
+        color: #000 !important;
+    }
+
+    .schedule-layout {
+        display: block !important;
+    }
+
+    .panel-card, .schedule-card, .time-block {
+        border: 1px solid #ccc !important;
+        background: #fff !important;
+        color: #000 !important;
+        box-shadow: none !important;
+        break-inside: avoid;
+        margin-bottom: 8px !important;
+    }
+
+    .tag, .badge, .subject-badge {
+        border: 1px solid #000 !important;
+        color: #000 !important;
+        background: transparent !important;
+    }
+}

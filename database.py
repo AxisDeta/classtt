@@ -161,6 +161,54 @@ class DatabaseManager:
                 "UPDATE studytt_tasks SET week_start = %s WHERE week_start IS NULL",
                 (self.get_current_week_start(),)
             )
+
+            # Topic Mastery & Weakness Table
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS studytt_topic_mastery (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                subject_code VARCHAR(20) NOT NULL,
+                topic_title VARCHAR(255) NOT NULL,
+                status ENUM('needs-work', 'reviewing', 'mastered') DEFAULT 'needs-work',
+                last_reviewed DATETIME DEFAULT NULL,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_subject_topic (subject_code, topic_title),
+                INDEX idx_topic_status (subject_code, status)
+            )
+            """)
+
+            # Spaced Repetition Reviews Table
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS studytt_reviews (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                subject_code VARCHAR(20) NOT NULL,
+                topic VARCHAR(255) NOT NULL,
+                difficulty_reason VARCHAR(255),
+                interval_stage INT DEFAULT 1,
+                next_review_date DATE NOT NULL,
+                completed BOOLEAN DEFAULT FALSE,
+                completed_at DATETIME DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_review_sched (next_review_date, completed),
+                INDEX idx_review_subj (subject_code)
+            )
+            """)
+
+            # Exam Milestones & Target Velocity Table
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS studytt_milestones (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                subject_code VARCHAR(20) NOT NULL,
+                title VARCHAR(100) NOT NULL,
+                target_date DATE NOT NULL,
+                target_hours FLOAT DEFAULT 20.0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_milestone_date (target_date)
+            )
+            """)
             
             conn.commit()
             cursor.close()
@@ -930,6 +978,204 @@ class DatabaseManager:
         
         except mysql.connector.Error as err:
             LOG.error(f"✗ Failed to update session {session_id}: {err}")
+            return False
+
+    # ==================== TOPIC MASTERY METHODS ====================
+
+    def get_topic_mastery(self, subject_code):
+        """Get all tracked topic mastery statuses for a specific subject"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT topic_title, status, last_reviewed, notes, updated_at
+                FROM studytt_topic_mastery
+                WHERE subject_code = %s
+            """, (subject_code,))
+            rows = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            return {r['topic_title']: r for r in rows}
+        except mysql.connector.Error as err:
+            LOG.error(f"✗ Failed to get topic mastery for {subject_code}: {err}")
+            return {}
+
+    def update_topic_status(self, subject_code, topic_title, status, notes=None):
+        """Update or insert topic mastery status"""
+        if status not in ('needs-work', 'reviewing', 'mastered'):
+            status = 'needs-work'
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO studytt_topic_mastery (subject_code, topic_title, status, last_reviewed, notes)
+                VALUES (%s, %s, %s, NOW(), %s)
+                ON DUPLICATE KEY UPDATE
+                    status = VALUES(status),
+                    last_reviewed = NOW(),
+                    notes = COALESCE(VALUES(notes), notes)
+            """, (subject_code, topic_title, status, notes))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return True
+        except mysql.connector.Error as err:
+            LOG.error(f"✗ Failed to update topic status ({subject_code} - {topic_title}): {err}")
+            return False
+
+    def get_attention_needed_topics(self, limit=8):
+        """Retrieve topics flagged as 'needs-work' or overdue for review"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT id, subject_code, topic_title, status, last_reviewed, notes
+                FROM studytt_topic_mastery
+                WHERE status = 'needs-work'
+                ORDER BY COALESCE(last_reviewed, created_at) ASC
+                LIMIT %s
+            """, (limit,))
+            rows = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            return rows
+        except mysql.connector.Error as err:
+            LOG.error(f"✗ Failed to get attention needed topics: {err}")
+            return []
+
+    # ==================== SPACED REPETITION REVIEWS ====================
+
+    def create_review_item(self, subject_code, topic, difficulty_reason=None, interval_days=3):
+        """Schedule a spaced repetition review item"""
+        try:
+            target_date = datetime.now().date() + timedelta(days=interval_days)
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO studytt_reviews (subject_code, topic, difficulty_reason, interval_stage, next_review_date, completed)
+                VALUES (%s, %s, %s, 1, %s, FALSE)
+            """, (subject_code, topic, difficulty_reason, target_date))
+            conn.commit()
+            review_id = cursor.lastrowid
+            cursor.close()
+            conn.close()
+            return review_id
+        except mysql.connector.Error as err:
+            LOG.error(f"✗ Failed to create review item: {err}")
+            return None
+
+    def get_due_reviews(self, target_date=None):
+        """Retrieve pending reviews due on or before target_date"""
+        try:
+            check_date = target_date or datetime.now().date()
+            conn = self.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT id, subject_code, topic, difficulty_reason, interval_stage, next_review_date, created_at
+                FROM studytt_reviews
+                WHERE completed = FALSE AND next_review_date <= %s
+                ORDER BY next_review_date ASC, id ASC
+            """, (check_date,))
+            rows = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            return rows
+        except mysql.connector.Error as err:
+            LOG.error(f"✗ Failed to fetch due reviews: {err}")
+            return []
+
+    def complete_review_item(self, review_id, advance_interval=True):
+        """Mark a review item completed, optionally scheduling next interval (3d -> 7d -> 14d -> mastered)"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT id, subject_code, topic, interval_stage
+                FROM studytt_reviews
+                WHERE id = %s
+            """, (review_id,))
+            item = cursor.fetchone()
+            if not item:
+                cursor.close()
+                conn.close()
+                return False
+
+            cursor.execute("""
+                UPDATE studytt_reviews
+                SET completed = TRUE, completed_at = NOW()
+                WHERE id = %s
+            """, (review_id,))
+
+            # Schedule next interval if applicable
+            next_stage = item['interval_stage'] + 1
+            if advance_interval and next_stage <= 3:
+                next_days = 7 if next_stage == 2 else 14
+                next_date = datetime.now().date() + timedelta(days=next_days)
+                cursor.execute("""
+                    INSERT INTO studytt_reviews (subject_code, topic, difficulty_reason, interval_stage, next_review_date, completed)
+                    VALUES (%s, %s, %s, %s, %s, FALSE)
+                """, (item['subject_code'], item['topic'], f"Stage {next_stage} Spaced Review", next_stage, next_date))
+
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return True
+        except mysql.connector.Error as err:
+            LOG.error(f"✗ Failed to complete review item {review_id}: {err}")
+            return False
+
+    # ==================== EXAM MILESTONES ====================
+
+    def get_milestones(self):
+        """Get all upcoming exam and CAT milestones"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT id, subject_code, title, target_date, target_hours,
+                       DATEDIFF(target_date, CURDATE()) as days_remaining
+                FROM studytt_milestones
+                ORDER BY target_date ASC
+            """)
+            rows = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            return rows
+        except mysql.connector.Error as err:
+            LOG.error(f"✗ Failed to fetch milestones: {err}")
+            return []
+
+    def add_milestone(self, subject_code, title, target_date, target_hours=20.0):
+        """Add a new milestone/exam target"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO studytt_milestones (subject_code, title, target_date, target_hours)
+                VALUES (%s, %s, %s, %s)
+            """, (subject_code, title, target_date, target_hours))
+            conn.commit()
+            new_id = cursor.lastrowid
+            cursor.close()
+            conn.close()
+            return new_id
+        except mysql.connector.Error as err:
+            LOG.error(f"✗ Failed to add milestone: {err}")
+            return None
+
+    def delete_milestone(self, milestone_id):
+        """Delete an exam milestone"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM studytt_milestones WHERE id = %s", (milestone_id,))
+            conn.commit()
+            deleted = cursor.rowcount > 0
+            cursor.close()
+            conn.close()
+            return deleted
+        except mysql.connector.Error as err:
+            LOG.error(f"✗ Failed to delete milestone {milestone_id}: {err}")
             return False
 
 # Initialize global database manager
