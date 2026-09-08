@@ -77,10 +77,6 @@ async function loadScheduleData() {
         scheduleData = data.schedule || {};
         subjects = data.subjects || {};
         strategyData = data.strategy || {};
-        const dateRangeEl = document.getElementById('dateRange');
-        if (dateRangeEl) {
-            dateRangeEl.textContent = data.date_range || '3rd Year, 1st Semester';
-        }
     } catch (error) {
         console.error('Error loading schedule:', error);
     }

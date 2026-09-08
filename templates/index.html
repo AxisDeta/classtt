@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3rd Year, 1st Semester — Study Scheduler</title>
+    <title>Weekly Study Scheduler</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260908v4') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -21,11 +21,9 @@
                     </svg>
                     <div>
                         <h1>Weekly Study Scheduler</h1>
-                        <span class="header-badge">7 Units • 3rd Year, 1st Sem</span>
                     </div>
                 </div>
                 <div class="header-right">
-                    <p class="date-range" id="dateRange">11 May 2026 → 26 June 2026</p>
                     {% if is_authenticated %}
                     <div class="user-auth-badge">
                         <span class="user-email-pill" title="Logged in as {{ current_user_email }}">
@@ -62,9 +60,6 @@
                         </svg>
                     </button>
                 </div>
-            </div>
-            <div class="header-subtitle">
-                <span>Structured Weekly Timetable & Study Analytics</span>
             </div>
         </header>
 
