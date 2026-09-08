@@ -19,6 +19,7 @@ if IS_PRODUCTION and app.config['SECRET_KEY'] == 'dev-secret-key':
     raise RuntimeError("FLASK_SECRET must be set in production.")
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = os.getenv('SESSION_FILE_DIR', 'flask_session')
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 86400
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -29,17 +30,22 @@ app.config['SESSION_COOKIE_SECURE'] = IS_PRODUCTION
 from flask_session import Session
 Session(app)
 
-# Admin configuration
-ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
-ADMIN_PASSWORD_HASH = os.getenv('ADMIN_PASSWORD_HASH', '')
-ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', '')
-if not ADMIN_PASSWORD_HASH and ADMIN_PASSWORD:
-    ADMIN_PASSWORD_HASH = bcrypt.hashpw(ADMIN_PASSWORD.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-if not ADMIN_PASSWORD_HASH:
+# Owner authentication configuration (from Render environment variables)
+AUTH_EMAIL = (os.getenv('AUTH_EMAIL') or os.getenv('LOGIN_EMAIL') or os.getenv('ADMIN_EMAIL') or os.getenv('OWNER_EMAIL') or 'shivogojohn@gmail.com').strip().lower()
+AUTH_PASSWORD = os.getenv('AUTH_PASSWORD') or os.getenv('LOGIN_PASSWORD') or os.getenv('ADMIN_PASSWORD') or os.getenv('OWNER_PASSWORD') or ''
+AUTH_PASSWORD_HASH = os.getenv('AUTH_PASSWORD_HASH') or os.getenv('ADMIN_PASSWORD_HASH') or ''
+
+if not AUTH_PASSWORD_HASH and AUTH_PASSWORD:
+    AUTH_PASSWORD_HASH = bcrypt.hashpw(AUTH_PASSWORD.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+if not AUTH_PASSWORD_HASH:
     if IS_PRODUCTION:
-        raise RuntimeError("ADMIN_PASSWORD or ADMIN_PASSWORD_HASH must be set in production.")
-    LOG_FALLBACK_ADMIN_PASSWORD = 'change-me'
-    ADMIN_PASSWORD_HASH = bcrypt.hashpw(LOG_FALLBACK_ADMIN_PASSWORD.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        raise RuntimeError("AUTH_PASSWORD or AUTH_PASSWORD_HASH must be set in production.")
+    LOG_FALLBACK_AUTH_PASSWORD = 'study_secure_pass_2026'
+    AUTH_PASSWORD_HASH = bcrypt.hashpw(LOG_FALLBACK_AUTH_PASSWORD.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', AUTH_EMAIL)
+ADMIN_PASSWORD_HASH = AUTH_PASSWORD_HASH
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -461,43 +467,102 @@ rules_and_strategy = {
     }
 }
 
-# Admin authentication decorator
-def admin_required(f):
+# ==================== AUTHENTICATION & ACCESS CONTROL ====================
+
+@app.before_request
+def require_login():
+    """Global gatekeeper: Enforce login across all pages and APIs (except public auth endpoints)."""
+    public_endpoints = {'login', 'logout', 'static', 'healthz', 'admin_login', 'admin_logout'}
+    
+    # Allow static assets and health check
+    if request.path.startswith('/static/') or request.path == '/healthz':
+        return None
+    
+    if request.endpoint in public_endpoints:
+        return None
+    
+    # Check if user has an active authenticated session
+    if not session.get('user_logged_in'):
+        if request.path.startswith('/api/'):
+            return jsonify({"error": "Authentication required. Please log in."}), 401
+        return redirect(url_for('login', next=request.url))
+
+@app.context_processor
+def inject_user():
+    """Inject current authenticated user data into template rendering."""
+    return {
+        "current_user_email": session.get('user_email', ''),
+        "is_authenticated": bool(session.get('user_logged_in'))
+    }
+
+def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not session.get('admin_logged_in'):
-            # Check if this is an API request
+        if not session.get('user_logged_in'):
             if request.path.startswith('/api/'):
-                return jsonify({"error": "Admin authentication required"}), 401
-            flash('Admin access required', 'error')
-            return redirect(url_for('admin_login'))
+                return jsonify({"error": "Authentication required"}), 401
+            return redirect(url_for('login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
 
-# Admin routes
-@app.route('/admin/login', methods=['GET', 'POST'])
-def admin_login():
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('user_logged_in') or not session.get('admin_logged_in'):
+            if request.path.startswith('/api/'):
+                return jsonify({"error": "Admin authentication required"}), 401
+            flash('Admin access required', 'error')
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Authentication routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if session.get('user_logged_in'):
+        return redirect(url_for('index'))
+    
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
         
-        # Validate credentials
-        if username == ADMIN_USERNAME and bcrypt.checkpw(password.encode('utf-8'), ADMIN_PASSWORD_HASH.encode('utf-8')):
+        # Strictly check that the email matches the authorized owner email
+        if not email or email != AUTH_EMAIL:
+            flash('Unauthorized email. Access is strictly restricted to the authorized owner only.', 'error')
+            return render_template('login.html', prefill_email=email), 401
+        
+        # Verify password with bcrypt
+        if password and bcrypt.checkpw(password.encode('utf-8'), AUTH_PASSWORD_HASH.encode('utf-8')):
+            session.permanent = True
+            session['user_logged_in'] = True
+            session['user_email'] = AUTH_EMAIL
             session['admin_logged_in'] = True
-            session['admin_username'] = username
-            flash('Login successful', 'success')
-            return redirect(url_for('admin_dashboard'))
+            session['admin_username'] = AUTH_EMAIL
+            
+            flash('Login successful. Welcome back!', 'success')
+            next_url = request.args.get('next')
+            if next_url and next_url.startswith('/'):
+                return redirect(next_url)
+            return redirect(url_for('index'))
         else:
-            flash('Invalid credentials', 'error')
-    
-    return render_template('admin_login.html')
+            flash('Invalid password. Please try again.', 'error')
+            return render_template('login.html', prefill_email=email), 401
+            
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Logged out successfully.', 'info')
+    return redirect(url_for('login'))
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    return redirect(url_for('login', next=url_for('admin_dashboard')))
 
 @app.route('/admin/logout')
 def admin_logout():
-    session.pop('admin_logged_in', None)
-    session.pop('admin_username', None)
-    flash('Logged out successfully', 'success')
-    return redirect(url_for('index'))
+    return redirect(url_for('logout'))
 
 @app.route('/admin')
 @admin_required
