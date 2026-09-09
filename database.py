@@ -322,30 +322,59 @@ class DatabaseManager:
             LOG.error(f"✗ Failed to record study session: {err}")
             return None
     
-    def update_subject_progress(self, subject_code, hours):
-        """Update subject progress and statistics"""
+    def update_subject_progress(self, subject_code, hours=None):
+        """Update subject progress and statistics from actual sessions"""
         try:
             conn = self.get_connection()
-            cursor = conn.cursor()
+            cursor = conn.cursor(dictionary=True)
             
-            # Check if subject exists in stats
+            # Recalculate totals directly from studytt_sessions for exact accuracy
+            cursor.execute("""
+            SELECT 
+                ROUND(COALESCE(SUM(duration_minutes), 0) / 60.0, 2) AS total_study_hours,
+                COUNT(*) AS total_sessions,
+                ROUND(COALESCE(SUM(duration_minutes), 0) / 60.0 / GREATEST(COUNT(*), 1), 2) AS average_session_hours,
+                MAX(actual_start) AS last_studied
+            FROM studytt_sessions
+            WHERE subject_code = %s AND completed = 1
+            """, (subject_code,))
+            stats = cursor.fetchone()
+            
             cursor.execute("SELECT id FROM studytt_stats WHERE subject_code = %s", (subject_code,))
             exists = cursor.fetchone()
             
-            if not exists:
-                cursor.execute("""
-                INSERT INTO studytt_stats (subject_code, total_study_hours, total_sessions)
-                VALUES (%s, %s, 1)
-                """, (subject_code, hours / 60))
+            if not stats or stats['total_sessions'] == 0:
+                if exists:
+                    cursor.execute("DELETE FROM studytt_stats WHERE subject_code = %s", (subject_code,))
             else:
-                cursor.execute("""
-                UPDATE studytt_stats 
-                SET total_study_hours = total_study_hours + %s,
-                    total_sessions = total_sessions + 1,
-                    average_session_hours = (total_study_hours + %s) / (total_sessions + 1),
-                    last_studied = NOW()
-                WHERE subject_code = %s
-                """, (hours / 60, hours / 60, subject_code))
+                if not exists:
+                    cursor.execute("""
+                    INSERT INTO studytt_stats 
+                    (subject_code, total_study_hours, total_sessions, average_session_hours, last_studied, last_updated)
+                    VALUES (%s, %s, %s, %s, %s, NOW())
+                    """, (
+                        subject_code,
+                        float(stats['total_study_hours']),
+                        int(stats['total_sessions']),
+                        float(stats['average_session_hours']),
+                        stats['last_studied']
+                    ))
+                else:
+                    cursor.execute("""
+                    UPDATE studytt_stats 
+                    SET total_study_hours = %s,
+                        total_sessions = %s,
+                        average_session_hours = %s,
+                        last_studied = %s,
+                        last_updated = NOW()
+                    WHERE subject_code = %s
+                    """, (
+                        float(stats['total_study_hours']),
+                        int(stats['total_sessions']),
+                        float(stats['average_session_hours']),
+                        stats['last_studied'],
+                        subject_code
+                    ))
             
             conn.commit()
             cursor.close()
