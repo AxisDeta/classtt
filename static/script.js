@@ -1288,16 +1288,16 @@ function formatTextForDisplay(text) {
 // High-contrast, distinct palette guaranteeing no two subjects share colors
 const DISTINCT_CHART_PALETTE = [
     '#10B981', // Emerald Green (SMA300)
-    '#F97316', // Vibrant Orange (SST205)
     '#EF4444', // Crimson Red (SST305)
-    '#14B8A6', // Modern Teal (SMA203)
     '#3B82F6', // Royal Blue (SMA335)
-    '#F59E0B', // Amber (SMA330)
+    '#F59E0B', // Amber Gold (SMA330)
     '#8B5CF6', // Violet (SST304)
     '#06B6D4', // Cyan (SST301)
     '#EC4899', // Rose Pink (SST101)
-    '#6366F1', // Indigo (SMA201)
-    '#D946EF', // Fuchsia (SST201)
+    '#14B8A6', // Modern Teal
+    '#F97316', // Vibrant Orange
+    '#6366F1', // Indigo
+    '#D946EF', // Fuchsia
     '#84CC16', // Lime
     '#0EA5E9'  // Sky Blue
 ];
