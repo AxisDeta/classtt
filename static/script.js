@@ -1057,6 +1057,18 @@ function formatInlineMarkdown(text) {
     // Normalize excessive backslashes
     let clean = text.replace(/\\\\([a-zA-Z\(\)\[\]\{\}])/g, '\\$1');
 
+    // Auto-repair unclosed inline math \( ... without \)
+    const openMatches = (clean.match(/\\\(/g) || []).length;
+    const closeMatches = (clean.match(/\\\)/g) || []).length;
+    if (openMatches > closeMatches) {
+        let diff = openMatches - closeMatches;
+        if (clean.endsWith('\\')) clean = clean.slice(0, -1).trimEnd();
+        const bOpen = (clean.match(/\{/g) || []).length;
+        const bClose = (clean.match(/\}/g) || []).length;
+        if (bOpen > bClose) clean += '}'.repeat(bOpen - bClose);
+        clean += '\\)'.repeat(diff);
+    }
+
     // Protect inline math: \( ... \) or $ ... $
     const inlineMath = [];
     let sanitized = clean.replace(/\\\(([\s\S]*?)\\\)/g, (match) => {
@@ -1131,6 +1143,18 @@ function formatTextForDisplay(text) {
     if (!text) return '';
     // Normalize excessive backslashes
     let clean = text.replace(/\\\\([a-zA-Z\(\)\[\]\{\}])/g, '\\$1');
+
+    // Auto-repair unclosed display math \[ ... without \]
+    const dispOpenMatches = (clean.match(/\\\[/g) || []).length;
+    const dispCloseMatches = (clean.match(/\\\]/g) || []).length;
+    if (dispOpenMatches > dispCloseMatches) {
+        let diff = dispOpenMatches - dispCloseMatches;
+        if (clean.endsWith('\\')) clean = clean.slice(0, -1).trimEnd();
+        const bOpen = (clean.match(/\{/g) || []).length;
+        const bClose = (clean.match(/\}/g) || []).length;
+        if (bOpen > bClose) clean += '}'.repeat(bOpen - bClose);
+        clean += '\\]'.repeat(diff);
+    }
 
     // Protect display math blocks: \[ ... \] or $$ ... $$ across newlines
     const displayMath = [];

@@ -284,7 +284,7 @@ Format each tip on a new line starting with:
 
 Guidelines:
 - When writing mathematical formulas, symbols, or notation, use standard LaTeX inline syntax wrapped in \\( ... \\) (e.g. \\(E[\\mathbf{{X}}]\\), \\(\\boldsymbol{{\\mu}}\\), \\(\\Sigma\\), \\(\\varepsilon\\text{{--}}\\delta\\)).
-- Make each tip practical, actionable, and complete without cutting off.
+- Keep mathematical formulas concise and ensure all \\( ... \\) delimiters and curly braces are completely closed without cutting off.
 """
             
             message = self._chat_completion(
@@ -295,7 +295,7 @@ Guidelines:
                     }
                 ],
                 temperature=0.7,
-                max_tokens=600,
+                max_tokens=1500,
                 top_p=1
             )
             
@@ -331,19 +331,21 @@ Guidelines:
                     f"You should avoid this common pitfall: {mistake}" if mistake else f"You should create a one-page formula sheet summarizing definitions and core properties in {subject_code}."
                 ]
             
+            cleaned_tips = [StudyAI._repair_latex_delimiters(t) for t in tips if t]
             LOG.info(f"[AI] Generated study tips for {subject_code}")
-            return tips[:3]
+            return cleaned_tips[:3]
         
         except Exception as err:
             LOG.error(f"[AI ERROR] Failed to get study tips: {err}")
             method = (subject_info.get('method') or '').strip()
             mistake = (subject_info.get('mistake') or '').strip()
             title = subject_info.get('title') or subject_code
-            return [
+            fallback = [
                 f"You should derive key theorems and formulas from first principles without looking at your notes to build deep intuition for {title}.",
                 f"You should {method}" if method else f"You should work through past tutorial sheets and exam problems for {subject_code}.",
                 f"You should avoid this common pitfall: {mistake}" if mistake else f"You should create a one-page formula sheet summarizing definitions and core properties in {subject_code}."
             ]
+            return [StudyAI._repair_latex_delimiters(t) for t in fallback]
     
     def analyze_study_pattern(self, weekly_stats):
         """
@@ -514,6 +516,35 @@ Keep it concise and actionable (3-4 sentences total).
         elif isinstance(val, dict):
             return {k: StudyAI._clean_latex(v) for k, v in val.items()}
         return val
+
+    @staticmethod
+    def _repair_latex_delimiters(text):
+        """Ensure all LaTeX math brackets and delimiters in a text string are properly balanced and cleaned"""
+        if not text:
+            return text
+        cleaned = StudyAI._clean_latex(text)
+        if cleaned.endswith('\\'):
+            cleaned = cleaned[:-1].rstrip()
+        
+        open_inline = cleaned.count(r'\(')
+        close_inline = cleaned.count(r'\)')
+        if open_inline > close_inline:
+            diff = open_inline - close_inline
+            b_open = cleaned.count('{') - cleaned.count('}')
+            if b_open > 0:
+                cleaned += '}' * b_open
+            cleaned += r'\)' * diff
+
+        open_disp = cleaned.count(r'\[')
+        close_disp = cleaned.count(r'\]')
+        if open_disp > close_disp:
+            diff = open_disp - close_disp
+            b_open = cleaned.count('{') - cleaned.count('}')
+            if b_open > 0:
+                cleaned += '}' * b_open
+            cleaned += r'\]' * diff
+
+        return cleaned
 
     @staticmethod
     def _safe_json_loads(text):
