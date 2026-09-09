@@ -25,7 +25,7 @@ class StudyAI:
         self.fallback_models = [self.model, "openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b", "qwen/qwen3.6-27b"]
         LOG.info("Groq AI client initialized successfully")
     
-    def _chat_completion(self, messages, temperature=0.7, max_tokens=150, top_p=1):
+    def _chat_completion(self, messages, temperature=0.7, max_tokens=1000, top_p=1):
         """Execute chat completion with fallback models if the primary model is unavailable."""
         models_to_try = []
         for m in self.fallback_models:
@@ -168,7 +168,7 @@ Tell the student directly: You should focus on [specific area for improvement].
 Keep it concise (2-3 sentences).
 """
             
-            # Call Groq API
+            # Call Groq API with sufficient completion tokens for reasoning models
             message = self._chat_completion(
                 messages=[
                     {
@@ -177,12 +177,22 @@ Keep it concise (2-3 sentences).
                     }
                 ],
                 temperature=0.7,
-                max_tokens=150,
+                max_tokens=1000,
                 top_p=1
             )
             
-            content = message.choices[0].message.content.strip()
+            content = ""
+            if message and message.choices and len(message.choices) > 0:
+                raw_content = message.choices[0].message.content or ""
+                content = self._repair_latex_delimiters(raw_content.strip())
             
+            # Fallback if reasoning consumed tokens or response was blank
+            if not content or len(content) < 15:
+                if recent_notes:
+                    content = f"You are building solid momentum in {subject_code}. Next, synthesize your notes on {recent_notes[:70]}... by deriving the core definitions from scratch and testing yourself on counterexamples."
+                else:
+                    content = f"You are progressing well in {subject_code}. Dedicate your next study session to active proof reconstruction and solving past CAT problems without looking at solutions."
+
             LOG.info(f"[AI] Generated recommendation for {subject_code}")
             
             return {
@@ -244,11 +254,14 @@ Keep it concise (2-3 sentences total).
                     }
                 ],
                 temperature=0.7,
-                max_tokens=100,
+                max_tokens=1000,
                 top_p=1
             )
             
-            summary = message.choices[0].message.content.strip()
+            raw_summary = ""
+            if message and message.choices and len(message.choices) > 0:
+                raw_summary = (message.choices[0].message.content or "").strip()
+            summary = self._repair_latex_delimiters(raw_summary) if raw_summary else f"You logged {total_hours:.1f} hours of study across {subject_count} subjects this week. Maintain this focus and ensure key derivations are reviewed before weekend review blocks."
             LOG.info("[AI] Generated weekly summary")
             
             return summary
@@ -388,11 +401,14 @@ Keep it concise (2-3 sentences).
                     }
                 ],
                 temperature=0.7,
-                max_tokens=120,
+                max_tokens=1000,
                 top_p=1
             )
             
-            analysis = message.choices[0].message.content.strip()
+            raw_analysis = ""
+            if message and message.choices and len(message.choices) > 0:
+                raw_analysis = (message.choices[0].message.content or "").strip()
+            analysis = self._repair_latex_delimiters(raw_analysis) if raw_analysis else "Your study consistency is developing well. Prioritize technical subjects during morning deep work blocks."
             LOG.info("[AI] Generated study pattern analysis")
             
             return analysis
@@ -473,11 +489,14 @@ Keep it concise and actionable (3-4 sentences total).
                     }
                 ],
                 temperature=0.7,
-                max_tokens=250,
+                max_tokens=1200,
                 top_p=1
             )
             
-            insights = message.choices[0].message.content.strip()
+            raw_insights = ""
+            if message and message.choices and len(message.choices) > 0:
+                raw_insights = (message.choices[0].message.content or "").strip()
+            insights = self._repair_latex_delimiters(raw_insights) if raw_insights else "You have established steady study momentum. Continue anchoring technical subjects to direct proof reconstruction."
             LOG.info("[AI] Generated weekly insights from recommendations")
             
             return {

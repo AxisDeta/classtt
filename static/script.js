@@ -1010,18 +1010,20 @@ function renderRecommendations(rows) {
     const container = document.getElementById('recommendationsList');
     if (!container) return;
 
-    if (!rows || rows.length === 0) {
+    const validRows = (rows || []).filter(rec => rec && rec.content && rec.content.trim().length > 0);
+
+    if (validRows.length === 0) {
         container.innerHTML = '<p class="empty-note">No pending recommendations. Keep studying consistently!</p>';
         return;
     }
 
-    container.innerHTML = rows.map(rec => `
+    container.innerHTML = validRows.map(rec => `
         <div class="recommendation-item">
             <div class="recommendation-head">
                 <span class="recommendation-tag ${rec.recommendation_type}">${escapeHtml(rec.recommendation_type)}</span>
                 <strong>${escapeHtml(rec.subject_code)}</strong>
             </div>
-            <p class="recommendation-content">${escapeHtml(rec.content)}</p>
+            <p class="recommendation-content">${formatInlineMarkdown(rec.content)}</p>
             <div class="recommendation-actions">
                 <button class="mini-btn recommendation-ack-btn" data-id="${rec.id}" type="button">Mark Read</button>
             </div>

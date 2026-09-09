@@ -887,11 +887,11 @@ def record_progress():
                         "session_type": session_type
                     }
                 )
-                if rec.get('type') != 'error':
+                if rec.get('type') != 'error' and rec.get('content', '').strip():
                     db.save_recommendation(
                         subject_code,
                         rec.get('type'),
-                        rec.get('content')
+                        rec.get('content').strip()
                     )
 
             # If student flagged a struggle or topic for review, queue for spaced repetition

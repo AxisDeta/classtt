@@ -451,7 +451,10 @@ class DatabaseManager:
             return []
     
     def save_recommendation(self, subject_code, rec_type, content):
-        """Save an AI recommendation"""
+        """Save an AI recommendation if content is non-empty"""
+        if not content or not str(content).strip():
+            LOG.warning(f"Skipping save of empty recommendation for {subject_code}")
+            return
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
@@ -460,7 +463,7 @@ class DatabaseManager:
             INSERT INTO studytt_recommendations
             (subject_code, recommendation_type, content)
             VALUES (%s, %s, %s)
-            """, (subject_code, rec_type, content))
+            """, (subject_code, rec_type, str(content).strip()))
             
             conn.commit()
             cursor.close()
@@ -472,7 +475,7 @@ class DatabaseManager:
             LOG.error(f"✗ Failed to save recommendation: {err}")
     
     def get_pending_recommendations(self, one_per_subject=True):
-        """Get unacknowledged AI recommendations; optionally keep newest per subject."""
+        """Get unacknowledged AI recommendations with valid content; optionally keep newest per subject."""
         try:
             conn = self.get_connection()
             cursor = conn.cursor(dictionary=True)
@@ -486,6 +489,8 @@ class DatabaseManager:
                 generated_at
             FROM studytt_recommendations
             WHERE acknowledged = FALSE
+              AND content IS NOT NULL
+              AND TRIM(content) != ''
             ORDER BY generated_at DESC
             LIMIT 50
             """)
