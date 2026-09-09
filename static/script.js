@@ -1285,7 +1285,24 @@ function formatTextForDisplay(text) {
     return html;
 }
 
-// Render progress charts with 3rd-year subject palette
+// High-contrast, distinct palette guaranteeing no two subjects share colors
+const DISTINCT_CHART_PALETTE = [
+    '#10B981', // Emerald Green (SMA300)
+    '#F97316', // Vibrant Orange (SST205)
+    '#EF4444', // Crimson Red (SST305)
+    '#14B8A6', // Modern Teal (SMA203)
+    '#3B82F6', // Royal Blue (SMA335)
+    '#F59E0B', // Amber (SMA330)
+    '#8B5CF6', // Violet (SST304)
+    '#06B6D4', // Cyan (SST301)
+    '#EC4899', // Rose Pink (SST101)
+    '#6366F1', // Indigo (SMA201)
+    '#D946EF', // Fuchsia (SST201)
+    '#84CC16', // Lime
+    '#0EA5E9'  // Sky Blue
+];
+
+// Render progress charts with guaranteed distinct subject palette
 function renderCharts(progressRows) {
     if (!progressRows || progressRows.length === 0) {
         return;
@@ -1296,11 +1313,21 @@ function renderCharts(progressRows) {
     const hoursData = topSubjects.map(row => Number(row.total_study_hours || 0).toFixed(2));
     const sessionsData = topSubjects.map(row => row.total_sessions || 0);
 
-    const chartColors = labels.map(code => {
-        if (subjects[code] && subjects[code].color) {
-            return subjects[code].color;
+    const usedColors = new Set();
+    const chartColors = labels.map((code, index) => {
+        const assigned = subjects[code] && subjects[code].color ? subjects[code].color : null;
+        if (assigned && !usedColors.has(assigned.toLowerCase())) {
+            usedColors.add(assigned.toLowerCase());
+            return assigned;
         }
-        return '#10B981';
+        const fallback = DISTINCT_CHART_PALETTE.find(c => !usedColors.has(c.toLowerCase()));
+        if (fallback) {
+            usedColors.add(fallback.toLowerCase());
+            return fallback;
+        }
+        const cycleColor = DISTINCT_CHART_PALETTE[index % DISTINCT_CHART_PALETTE.length];
+        usedColors.add(cycleColor.toLowerCase());
+        return cycleColor;
     });
 
     renderHoursChart(labels, hoursData, chartColors);
@@ -1314,6 +1341,8 @@ function renderHoursChart(labels, data, colors) {
     if (hoursChartInstance) {
         hoursChartInstance.destroy();
     }
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
 
     hoursChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -1336,12 +1365,12 @@ function renderHoursChart(labels, data, colors) {
                     display: false
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
                     padding: 12,
                     titleFont: { size: 13, weight: 'bold' },
                     bodyFont: { size: 12 },
                     cornerRadius: 6,
-                    displayColors: false,
+                    displayColors: true,
                     callbacks: {
                         label: function(context) {
                             return context.parsed.y + ' hours studied';
@@ -1353,18 +1382,18 @@ function renderHoursChart(labels, data, colors) {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        color: 'rgba(100, 116, 139, 0.7)',
+                        color: isDark ? 'rgba(148, 163, 184, 0.85)' : 'rgba(100, 116, 139, 0.75)',
                         font: { size: 11 },
                         callback: function(val) { return val + 'h'; }
                     },
                     grid: {
-                        color: 'rgba(226, 232, 240, 0.4)',
+                        color: isDark ? 'rgba(51, 65, 85, 0.5)' : 'rgba(226, 232, 240, 0.4)',
                         drawBorder: false
                     }
                 },
                 x: {
                     ticks: {
-                        color: 'rgba(100, 116, 139, 0.8)',
+                        color: isDark ? 'rgba(226, 232, 240, 0.9)' : 'rgba(51, 65, 85, 0.9)',
                         font: { size: 11, weight: '600' }
                     },
                     grid: {
@@ -1384,6 +1413,9 @@ function renderSessionsChart(labels, data, colors) {
         sessionsChartInstance.destroy();
     }
 
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const borderColor = isDark ? '#1e293b' : '#ffffff';
+
     sessionsChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -1391,8 +1423,9 @@ function renderSessionsChart(labels, data, colors) {
             datasets: [{
                 data: data,
                 backgroundColor: colors,
-                borderColor: 'var(--white)',
-                borderWidth: 2
+                borderColor: borderColor,
+                borderWidth: 2,
+                hoverOffset: 6
             }]
         },
         options: {
@@ -1402,15 +1435,15 @@ function renderSessionsChart(labels, data, colors) {
                 legend: {
                     position: 'bottom',
                     labels: {
-                        font: { size: 11 },
-                        color: 'rgba(100, 116, 139, 0.8)',
-                        padding: 10,
+                        font: { size: 11, weight: '600' },
+                        color: isDark ? 'rgba(226, 232, 240, 0.85)' : 'rgba(71, 85, 105, 0.9)',
+                        padding: 12,
                         usePointStyle: true,
                         pointStyle: 'circle'
                     }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
                     padding: 12,
                     titleFont: { size: 13, weight: 'bold' },
                     bodyFont: { size: 12 },

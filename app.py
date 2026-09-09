@@ -450,6 +450,50 @@ subject_info = {
         "mistake": "Treating a retake as 'easy content, low effort needed' instead of systematically fixing specific conceptual gaps.",
         "resources": "Probability & Statistics for Engineers & Scientists (Walpole et al.); past CATs/exams",
         "outline": course_outlines.get("SST101", "Course outline not yet available.")
+    },
+    "SMA203": {
+        "title": "Linear Algebra II",
+        "color": "#14B8A6",
+        "difficulty_rank": 8,
+        "difficulty_label": "2nd Year Unit",
+        "description": "Vector spaces, linear transformations, eigenvalues and eigenvectors, inner product spaces, and canonical forms.",
+        "method": "Work through concrete matrix transformations and verify properties coordinate-free.",
+        "mistake": "Relying purely on mechanical row-reductions without geometric visualization.",
+        "resources": "Linear Algebra Done Right (Axler)",
+        "outline": "Vector spaces, subspaces, linear independence, basis, dimension, linear transformations, matrices, eigenvalues, eigenvectors, diagonalization, inner product spaces."
+    },
+    "SST205": {
+        "title": "Statistical Computing I",
+        "color": "#F97316",
+        "difficulty_rank": 9,
+        "difficulty_label": "2nd Year Unit",
+        "description": "Introduction to statistical programming, algorithmic implementations of statistical methods, data simulations, and optimization.",
+        "method": "Write clean, modular code and verify with synthetic datasets.",
+        "mistake": "Treating code as separate from statistical theory.",
+        "resources": "Computational Statistics (Givens & Hoeting)",
+        "outline": "Statistical algorithms, random number generators, Monte Carlo methods, optimization, simulation of stochastic processes."
+    },
+    "SMA201": {
+        "title": "Calculus II",
+        "color": "#6366F1",
+        "difficulty_rank": 10,
+        "difficulty_label": "2nd Year Unit",
+        "description": "Techniques of integration, improper integrals, sequences, infinite series, power series, and Taylor expansions.",
+        "method": "Master all convergence tests through systematic practice.",
+        "mistake": "Confusing sequence convergence with series convergence.",
+        "resources": "Calculus: Early Transcendentals (Stewart)",
+        "outline": "Techniques of integration, improper integrals, sequences, series, tests for convergence, power series, Taylor and Maclaurin series."
+    },
+    "SST201": {
+        "title": "Probability & Distribution Theory I",
+        "color": "#D946EF",
+        "difficulty_rank": 11,
+        "difficulty_label": "2nd Year Unit",
+        "description": "Univariate and bivariate probability distributions, moment generating functions, transformations of random variables, and limit theorems.",
+        "method": "Derive mgfs and pdf transformations from first principles.",
+        "mistake": "Forgetting the Jacobian when transforming continuous random variables.",
+        "resources": "Introduction to Mathematical Statistics (Hogg, McKean, Craig)",
+        "outline": "Random variables, probability mass and density functions, cumulative distribution functions, mathematical expectation, moments, mgf, special discrete and continuous distributions, bivariate distributions."
     }
 }
 

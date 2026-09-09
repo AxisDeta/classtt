@@ -26,6 +26,10 @@ COLORS = {
     'SST304': '#8B5CF6',  # Multivariate Statistical Methods I - Violet
     'SST301': '#06B6D4',  # Programming Language for Statistics I - Cyan
     'SST101': '#EC4899',  # Intro to Probability & Statistics (Retake) - Rose Pink
+    'SMA203': '#14B8A6',  # Linear Algebra II - Modern Teal
+    'SST205': '#F97316',  # Statistical Computing I - Vibrant Orange
+    'SMA201': '#6366F1',  # Calculus II - Indigo
+    'SST201': '#D946EF',  # Probability & Distribution Theory I - Fuchsia
 }
 
 # Study recommendations per subject
