@@ -998,6 +998,7 @@ function renderProgressOverview(progressRows, weeklyData) {
 
     if (weeklyData && weeklyData.summary) {
         summaryEl.innerHTML = formatTextForDisplay(weeklyData.summary);
+        renderMath(summaryEl);
     } else {
         const weeklyCount = weeklyData && weeklyData.weekly_stats ? weeklyData.weekly_stats.length : 0;
         summaryEl.textContent = weeklyCount > 0
@@ -1029,6 +1030,8 @@ function renderRecommendations(rows) {
             </div>
         </div>
     `).join('');
+
+    renderMath(container);
 
     container.querySelectorAll('.recommendation-ack-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -1071,16 +1074,21 @@ function formatInlineMarkdown(text) {
         clean += '\\)'.repeat(diff);
     }
 
-    // Protect inline math: \( ... \) or $ ... $
-    const inlineMath = [];
-    let sanitized = clean.replace(/\\\(([\s\S]*?)\\\)/g, (match) => {
-        const id = `__INLINE_MATH_${inlineMath.length}__`;
-        inlineMath.push(match);
+    // Protect math expressions: display \[...\] and inline \(...\) or $...$
+    const mathExpressions = [];
+    let sanitized = clean.replace(/\\\[([\s\S]*?)\\\]/g, (match) => {
+        const id = `__MATH_EXPR_${mathExpressions.length}__`;
+        mathExpressions.push({ raw: match, display: true });
+        return id;
+    });
+    sanitized = sanitized.replace(/\\\(([\s\S]*?)\\\)/g, (match) => {
+        const id = `__MATH_EXPR_${mathExpressions.length}__`;
+        mathExpressions.push({ raw: match, display: false });
         return id;
     });
     sanitized = sanitized.replace(/(?<!\$)\$([^\$\n]+?)\$(?!\$)/g, (match) => {
-        const id = `__INLINE_MATH_${inlineMath.length}__`;
-        inlineMath.push(match);
+        const id = `__MATH_EXPR_${mathExpressions.length}__`;
+        mathExpressions.push({ raw: match, display: false });
         return id;
     });
 
@@ -1092,9 +1100,25 @@ function formatInlineMarkdown(text) {
     res = res.replace(/\*(.*?)\*/g, '<em>$1</em>');
     res = res.replace(/`([^`]+)`/g, '<code>$1</code>');
 
-    // Restore inline math expressions verbatim
-    inlineMath.forEach((math, idx) => {
-        res = res.replace(`__INLINE_MATH_${idx}__`, math);
+    // Render with KaTeX directly if loaded, or restore delimiters for renderMath DOM pass
+    mathExpressions.forEach((item, idx) => {
+        let rendered = item.raw;
+        if (typeof window !== 'undefined' && typeof window.katex !== 'undefined' && typeof window.katex.renderToString === 'function') {
+            try {
+                let expr = item.raw;
+                if (expr.startsWith('\\[') && expr.endsWith('\\]')) {
+                    expr = expr.slice(2, -2);
+                } else if (expr.startsWith('\\(') && expr.endsWith('\\)')) {
+                    expr = expr.slice(2, -2);
+                } else if (expr.startsWith('$') && expr.endsWith('$')) {
+                    expr = expr.slice(1, -1);
+                }
+                rendered = window.katex.renderToString(expr.trim(), { displayMode: item.display, throwOnError: false });
+            } catch (err) {
+                rendered = item.raw;
+            }
+        }
+        res = res.replace(`__MATH_EXPR_${idx}__`, rendered);
     });
 
     return res;
@@ -1125,10 +1149,13 @@ function renderMath(element) {
         }
     }
 
-    // If KaTeX script is still loading asynchronously from CDN, schedule retry
+    // Polling retry for asynchronous/deferred script loading
     if (typeof renderMathInElement !== 'function' && typeof window !== 'undefined') {
-        setTimeout(() => {
+        let attempts = 0;
+        const interval = setInterval(() => {
+            attempts++;
             if (typeof renderMathInElement === 'function') {
+                clearInterval(interval);
                 try {
                     renderMathInElement(element, {
                         delimiters: katexDelimiters,
@@ -1136,8 +1163,10 @@ function renderMath(element) {
                         ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
                     });
                 } catch (e) {}
+            } else if (attempts >= 10) {
+                clearInterval(interval);
             }
-        }, 300);
+        }, 150);
     }
 }
 
@@ -1220,7 +1249,18 @@ function formatTextForDisplay(text) {
             flushList();
             flushTable();
             const mathBlock = displayMath[parseInt(dispMatch[1])];
-            html += `<div class="math-display-block">${mathBlock}</div>`;
+            let renderedBlock = mathBlock;
+            if (typeof window !== 'undefined' && typeof window.katex !== 'undefined' && typeof window.katex.renderToString === 'function') {
+                try {
+                    let expr = mathBlock;
+                    if (expr.startsWith('\\[') && expr.endsWith('\\]')) expr = expr.slice(2, -2);
+                    else if (expr.startsWith('$$') && expr.endsWith('$$')) expr = expr.slice(2, -2);
+                    renderedBlock = window.katex.renderToString(expr.trim(), { displayMode: true, throwOnError: false });
+                } catch (e) {
+                    renderedBlock = mathBlock;
+                }
+            }
+            html += `<div class="math-display-block">${renderedBlock}</div>`;
             continue;
         }
 
@@ -1607,6 +1647,8 @@ function renderWeeklyInsights(insights) {
         ` : ''}
         ${improvementList}
     `;
+
+    renderMath(container);
 }
 
 // Update today's focus section dynamically for both mini sidebar and full Today view
