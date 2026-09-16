@@ -1,9 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Study Scheduler</title>
+    <script>
+        var theme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+    </script>
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -448,20 +452,416 @@
                 flex-direction: column;
             }
 
-            .history-summary,
-            .history-charts {
+        /* Tab Navigation */
+        .admin-nav-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.25rem;
+            flex-wrap: wrap;
+        }
+
+        .nav-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.95rem;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .nav-tab:hover {
+            color: var(--text-primary);
+            background: var(--bg-surface-hover, var(--light-bg));
+        }
+
+        .nav-tab.active {
+            color: var(--primary-color);
+            background: var(--bg-surface, var(--white));
+            border-bottom: 2px solid var(--primary-color);
+            margin-bottom: -2px;
+        }
+
+        .admin-tab-content {
+            display: none;
+        }
+
+        .admin-tab-content.active {
+            display: block;
+        }
+
+        /* Schedule Manager Panel */
+        .schedule-manager-panel {
+            background: var(--bg-surface, var(--white));
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .schedule-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .schedule-toolbar h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            color: var(--text-primary);
+        }
+
+        .schedule-toolbar p {
+            margin: 0.25rem 0 0 0;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .schedule-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn-success {
+            background: #10B981;
+            color: #ffffff;
+            border: none;
+            padding: 0.65rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-success.pulse {
+            animation: pulse-ring 2s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .unsaved-banner {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--warning-bg, #fffbeb);
+            color: var(--warning-text, #92400e);
+            border: 1px solid var(--warning-border, #fde68a);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.25rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .unsaved-banner.visible {
+            display: flex;
+        }
+
+        /* Day Selector Bar */
+        .day-selector-bar {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding-bottom: 0.75rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .day-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-surface-hover, var(--light-bg));
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.15s ease;
+        }
+
+        .day-pill:hover {
+            border-color: var(--primary-color);
+            color: var(--text-primary);
+        }
+
+        .day-pill.active {
+            background: var(--primary-color);
+            color: var(--primary-contrast, #ffffff);
+            border-color: var(--primary-color);
+        }
+
+        .day-pill .count-badge {
+            background: rgba(0, 0, 0, 0.12);
+            padding: 0.1rem 0.45rem;
+            border-radius: 10px;
+            font-size: 0.75rem;
+        }
+
+        .day-pill.active .count-badge {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* 3-Column Schedule Grid */
+        .schedule-columns-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+        }
+
+        @media (max-width: 1024px) {
+            .schedule-columns-grid {
                 grid-template-columns: 1fr;
             }
+        }
+
+        .schedule-col {
+            background: var(--bg-page, #f8fafc);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            min-height: 250px;
+        }
+
+        .schedule-col-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .schedule-col-header h3 {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .schedule-col-header .badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.15rem 0.5rem;
+            border-radius: 12px;
+            background: var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .schedule-cards-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            flex: 1;
+        }
+
+        .schedule-card {
+            background: var(--bg-surface, var(--white));
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--primary-color);
+            border-radius: 8px;
+            padding: 0.85rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+        }
+
+        .schedule-card:hover {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+            border-color: var(--border-hover, #cbd5e1);
+        }
+
+        .schedule-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.4rem;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+
+        .subject-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.2rem 0.55rem;
+            border-radius: 6px;
+            letter-spacing: 0.02em;
+        }
+
+        .time-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.775rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .card-title {
+            font-size: 0.925rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0.25rem 0 0.4rem 0;
+            line-height: 1.35;
+        }
+
+        .card-reason {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            background: var(--bg-subtle, #f8fafc);
+            padding: 0.5rem;
+            border-radius: 6px;
+            border-left: 2px solid var(--border-color);
+            margin-top: 0.4rem;
+            line-height: 1.4;
+        }
+
+        .card-focus-list {
+            margin: 0.5rem 0 0 0;
+            padding-left: 1.25rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        .card-focus-list li {
+            margin-bottom: 0.2rem;
+        }
+
+        .card-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.4rem;
+            margin-top: 0.75rem;
+            padding-top: 0.5rem;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .btn-icon {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.35rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .btn-icon:hover {
+            color: var(--primary-color);
+            background: var(--bg-surface-hover, var(--light-bg));
+            border-color: var(--border-hover, #cbd5e1);
+        }
+
+        .btn-icon.delete:hover {
+            color: var(--danger-color);
+            border-color: var(--danger-border, #fecaca);
+            background: var(--danger-bg, #fef2f2);
+        }
+
+        .btn-add-slot {
+            width: 100%;
+            margin-top: 0.75rem;
+            background: transparent;
+            border: 1px dashed var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.6rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-add-slot:hover {
+            background: var(--bg-surface, var(--white));
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .empty-slot-placeholder {
+            padding: 2rem 1rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            margin-top: 0.5rem;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="admin-header">
-            <h1>Admin Dashboard</h1>
-            <div>
-                <span>Welcome, {{ session.admin_username }}</span>
-                <a href="/admin/logout" style="margin-left: 1rem; color: var(--danger-color);">Logout</a>
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                <h1>Admin Dashboard</h1>
+                <span class="badge" style="background: var(--primary-light, #e0e7ff); color: var(--primary-color, #4f46e5); font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 9999px; font-size: 0.8rem;">Schedule & Database Control</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                <button class="theme-toggle" id="themeToggle" type="button" title="Toggle dark mode" aria-label="Toggle dark mode" style="background: var(--light-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-primary);">
+                    <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+                <span style="font-size: 0.9rem; color: var(--text-secondary);">Logged in: <strong style="color: var(--text-primary);">{{ session.admin_username }}</strong></span>
+                <a href="/" class="btn-secondary" style="text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.4rem; color: var(--text-primary); border: 1px solid var(--border-color);">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    Back to Dashboard
+                </a>
+                <a href="/admin/logout" style="margin-left: 0.5rem; color: var(--danger-color); text-decoration: none; font-weight: 600; font-size: 0.875rem;">Logout</a>
             </div>
         </div>
         
@@ -474,13 +874,66 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
-        <div class="admin-actions">
-            <button id="clearDbBtn" class="btn-danger">Clear All Database Data</button>
-            <button id="refreshBtn" class="btn-primary">Refresh Sessions</button>
+
+        <!-- Navigation Tabs -->
+        <div class="admin-nav-tabs">
+            <button class="nav-tab active" data-tab="tab-schedule" type="button">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                Timetable & Rescheduler
+            </button>
+            <button class="nav-tab" data-tab="tab-history" type="button">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"></path><path d="M12 20V4"></path><path d="M6 20v-6"></path></svg>
+                Weekly History & Analytics
+            </button>
+            <button class="nav-tab" data-tab="tab-data" type="button">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                Sessions & Database Records
+            </button>
         </div>
 
-        <div class="history-panel">
+        <!-- TAB 1: Timetable & Rescheduler -->
+        <div id="tab-schedule" class="admin-tab-content active">
+            <div class="schedule-manager-panel">
+                <div class="schedule-toolbar">
+                    <div>
+                        <h2>Weekly Timetable & Session Rescheduling</h2>
+                        <p>7 Courses &bull; 7 Days &bull; Dedicated Deep Study Block for Every Course</p>
+                    </div>
+                    <div class="schedule-actions">
+                        <button id="addBlockBtn" class="btn-primary" type="button" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            Add Session Block
+                        </button>
+                        <button id="resetScheduleBtn" class="btn-secondary" type="button" style="display: inline-flex; align-items: center; gap: 0.4rem; border: 1px solid var(--border-color);">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                            Reset to Default
+                        </button>
+                        <button id="saveScheduleBtn" class="btn-success" type="button">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                            Save & Apply Schedule
+                        </button>
+                    </div>
+                </div>
+
+                <div id="unsavedBanner" class="unsaved-banner">
+                    <span>You have unsaved schedule changes. Click <strong>"Save & Apply Schedule"</strong> to push updates to the live student dashboard.</span>
+                    <button class="btn-success" type="button" onclick="saveScheduleToServer()" style="padding: 0.35rem 0.85rem; font-size: 0.8rem;">Save Now</button>
+                </div>
+
+                <!-- Day Selector Bar -->
+                <div class="day-selector-bar" id="daySelectorBar">
+                    <!-- Populated dynamically via JS -->
+                </div>
+
+                <!-- 3-Column Daily Schedule Grid -->
+                <div class="schedule-columns-grid" id="scheduleColumnsContainer">
+                    <!-- Populated dynamically via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: Weekly History & Analytics -->
+        <div id="tab-history" class="admin-tab-content">
             <div class="history-header">
                 <h2>Weekly History</h2>
                 <div class="history-controls">
@@ -516,7 +969,15 @@
                 </div>
             </div>
         </div>
-        
+    </div> <!-- End #tab-history -->
+
+    <!-- TAB 3: Sessions & Database Records -->
+    <div id="tab-data" class="admin-tab-content">
+        <div class="admin-actions" style="margin-bottom: 1.5rem;">
+            <button id="clearDbBtn" class="btn-danger" type="button">Clear All Database Data</button>
+            <button id="refreshBtn" class="btn-primary" type="button">Refresh Sessions</button>
+        </div>
+
         <div class="sessions-table">
             <div class="table-toolbar">
                 <h2>Study Sessions</h2>
@@ -604,6 +1065,7 @@
                 </tbody>
             </table>
         </div>
+        </div> <!-- End #tab-data -->
     </div>
     
     <!-- Edit Session Modal -->
@@ -671,6 +1133,94 @@
         </div>
     </div>
     
+    <!-- Schedule Block Modal (Add / Edit / Reschedule) -->
+    <div id="scheduleBlockModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 620px;">
+            <div class="modal-header">
+                <h3 id="scheduleModalTitle">Add Session Block</h3>
+                <button class="modal-close" type="button" onclick="closeScheduleModal()">&times;</button>
+            </div>
+            <form id="scheduleBlockForm" onsubmit="handleScheduleFormSubmit(event)">
+                <input type="hidden" id="blockMode" value="add">
+                <input type="hidden" id="origDay" value="">
+                <input type="hidden" id="origType" value="">
+                <input type="hidden" id="origIndex" value="-1">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="blockDay">Day of Week</label>
+                        <select id="blockDay" required>
+                            <option value="Monday">Monday</option>
+                            <option value="Tuesday">Tuesday</option>
+                            <option value="Wednesday">Wednesday</option>
+                            <option value="Thursday">Thursday</option>
+                            <option value="Friday">Friday</option>
+                            <option value="Saturday">Saturday</option>
+                            <option value="Sunday">Sunday</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="blockType">Block Category</label>
+                        <select id="blockType" required onchange="handleBlockTypeOrSubjectChange()">
+                            <option value="classes">Class (Lecture)</option>
+                            <option value="deep_study">Deep Study</option>
+                            <option value="revision">Revision</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="blockSubject">Course / Subject</label>
+                        <select id="blockSubject" required onchange="handleBlockTypeOrSubjectChange()">
+                            <option value="SMA300">SMA300 - Real Analysis I</option>
+                            <option value="SST305">SST305 - Theory of Estimation</option>
+                            <option value="SMA335">SMA335 - ODEs I</option>
+                            <option value="SMA330">SMA330 - Numerical Analysis I</option>
+                            <option value="SST304">SST304 - Multivariate Statistical Methods I</option>
+                            <option value="SST301">SST301 - Programming Language for Statistics I</option>
+                            <option value="SST101">SST101 - Intro to Probability & Stats (Retake)</option>
+                            <option value="CUSTOM">Custom / Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="blockTime">Time Range</label>
+                        <input type="text" id="blockTime" placeholder="e.g. 9:30am – 11:30am" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="blockTitle">Title</label>
+                        <input type="text" id="blockTitle" placeholder="e.g. SMA 300 Deep Study" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="blockColor">Color Accent</label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <input type="color" id="blockColorPicker" value="#3B82F6" style="width: 44px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; padding: 2px;" onchange="document.getElementById('blockColor').value = this.value">
+                            <input type="text" id="blockColor" value="#3B82F6" placeholder="#3B82F6" style="flex: 1;" required oninput="document.getElementById('blockColorPicker').value = this.value">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" id="reasonGroup">
+                    <label for="blockReason">Pedagogical Rationale / Reason <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">(Key for Deep Study)</span></label>
+                    <textarea id="blockReason" rows="3" placeholder="Explain why this deep work block is placed here and what it accomplishes..."></textarea>
+                </div>
+
+                <div class="form-group" id="focusGroup">
+                    <label for="blockFocus">Focus Points / Key Objectives <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">(One bullet point per line)</span></label>
+                    <textarea id="blockFocus" rows="3" placeholder="Derive MLE estimator&#10;Verify CRLB bound&#10;Redo proof from memory"></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" onclick="closeScheduleModal()" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Apply to Timetable</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <script>
         let sessions = [];
         let tasks = [];
@@ -679,9 +1229,19 @@
         let selectedTaskIds = new Set();
         let academicHistoryChart = null;
         let freeHistoryChart = null;
+
+        // Timetable Manager State
+        let adminSchedule = null;
+        let adminSubjects = {};
+        let activeScheduleDay = 'Monday';
+        let isScheduleDirty = false;
+        const SCHEDULE_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         
         // Load admin data on page load
         document.addEventListener('DOMContentLoaded', () => {
+            initAdminTabs();
+            initThemeToggle();
+            loadAdminSchedule();
             loadSessions();
             loadAdminTasks();
             initializeHistoryPanel();
@@ -690,6 +1250,19 @@
             document.getElementById('deleteSelectedSessionsBtn').addEventListener('click', deleteSelectedSessions);
             document.getElementById('deleteSelectedTasksBtn').addEventListener('click', deleteSelectedTasks);
             document.getElementById('loadHistoryBtn').addEventListener('click', loadWeeklyHistory);
+
+            const addBlockBtn = document.getElementById('addBlockBtn');
+            if (addBlockBtn) {
+                addBlockBtn.addEventListener('click', () => openAddBlockModal(activeScheduleDay === 'All' ? 'Monday' : activeScheduleDay, 'deep_study'));
+            }
+            const saveScheduleBtn = document.getElementById('saveScheduleBtn');
+            if (saveScheduleBtn) {
+                saveScheduleBtn.addEventListener('click', saveScheduleToServer);
+            }
+            const resetScheduleBtn = document.getElementById('resetScheduleBtn');
+            if (resetScheduleBtn) {
+                resetScheduleBtn.addEventListener('click', resetScheduleToDefault);
+            }
         });
         
         // Clear database
@@ -1267,6 +1840,484 @@
             }
         }
 
+        // Timetable Management Functions
+        function initAdminTabs() {
+            document.querySelectorAll('.nav-tab').forEach(tabBtn => {
+                tabBtn.addEventListener('click', () => {
+                    document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
+                    tabBtn.classList.add('active');
+                    const targetId = tabBtn.getAttribute('data-tab');
+                    const target = document.getElementById(targetId);
+                    if (target) {
+                        target.classList.add('active');
+                    }
+                });
+            });
+        }
+
+        function initThemeToggle() {
+            const themeToggle = document.getElementById('themeToggle');
+            if (themeToggle) {
+                themeToggle.addEventListener('click', () => {
+                    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                    document.documentElement.setAttribute('data-theme', newTheme);
+                    localStorage.setItem('theme', newTheme);
+                });
+            }
+        }
+
+        async function loadAdminSchedule() {
+            const container = document.getElementById('scheduleColumnsContainer');
+            if (container) {
+                container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-muted);">Loading timetable schedule...</div>';
+            }
+            try {
+                const res = await fetch('/api/admin/schedule');
+                const data = await res.json();
+                if (data.success) {
+                    adminSchedule = data.schedule;
+                    adminSubjects = data.subjects || {};
+                    renderDaySelectorBar();
+                    renderScheduleGrid();
+                } else {
+                    console.error('Failed to load schedule:', data.error);
+                }
+            } catch (err) {
+                console.error('Error fetching admin schedule:', err);
+            }
+        }
+
+        function renderDaySelectorBar() {
+            const bar = document.getElementById('daySelectorBar');
+            if (!bar || !adminSchedule) return;
+
+            let html = '';
+            SCHEDULE_DAYS.forEach(day => {
+                const dayData = adminSchedule[day] || {};
+                const count = (dayData.classes || []).length + (dayData.deep_study || []).length + (dayData.revision || []).length;
+                const activeClass = activeScheduleDay === day ? 'active' : '';
+                html += `
+                    <button class="day-pill ${activeClass}" type="button" onclick="selectScheduleDay('${day}')">
+                        <span>${day}</span>
+                        <span class="count-badge">${count}</span>
+                    </button>
+                `;
+            });
+
+            let totalWeekSlots = 0;
+            SCHEDULE_DAYS.forEach(d => {
+                const dd = adminSchedule[d] || {};
+                totalWeekSlots += (dd.classes || []).length + (dd.deep_study || []).length + (dd.revision || []).length;
+            });
+            const allActive = activeScheduleDay === 'All' ? 'active' : '';
+            html += `
+                <button class="day-pill ${allActive}" type="button" onclick="selectScheduleDay('All')">
+                    <span>All 7 Days</span>
+                    <span class="count-badge">${totalWeekSlots}</span>
+                </button>
+            `;
+
+            bar.innerHTML = html;
+        }
+
+        function selectScheduleDay(day) {
+            activeScheduleDay = day;
+            renderDaySelectorBar();
+            renderScheduleGrid();
+        }
+
+        function renderScheduleGrid() {
+            const container = document.getElementById('scheduleColumnsContainer');
+            if (!container || !adminSchedule) return;
+
+            if (activeScheduleDay === 'All') {
+                renderAllDaysGrid(container);
+                return;
+            }
+
+            const dayData = adminSchedule[activeScheduleDay] || { classes: [], deep_study: [], revision: [] };
+            const classesList = dayData.classes || [];
+            const deepStudyList = dayData.deep_study || [];
+            const revisionList = dayData.revision || [];
+
+            container.innerHTML = `
+                <!-- Classes Column -->
+                <div class="schedule-col">
+                    <div class="schedule-col-header">
+                        <h3>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                            Classes (Lectures)
+                        </h3>
+                        <span class="badge">${classesList.length}</span>
+                    </div>
+                    <div class="schedule-cards-list">
+                        ${classesList.length === 0 ? '<div class="empty-slot-placeholder">No lecture classes scheduled for this day</div>' : classesList.map((item, idx) => renderScheduleCard(activeScheduleDay, 'classes', item, idx)).join('')}
+                    </div>
+                    <button class="btn-add-slot" type="button" onclick="openAddBlockModal('${activeScheduleDay}', 'classes')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Add Class
+                    </button>
+                </div>
+
+                <!-- Deep Study Column -->
+                <div class="schedule-col">
+                    <div class="schedule-col-header">
+                        <h3>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                            Deep Study Sessions
+                        </h3>
+                        <span class="badge" style="background: var(--primary-light, #e0e7ff); color: var(--primary-color, #4f46e5);">${deepStudyList.length}</span>
+                    </div>
+                    <div class="schedule-cards-list">
+                        ${deepStudyList.length === 0 ? '<div class="empty-slot-placeholder">No deep study block scheduled for this day</div>' : deepStudyList.map((item, idx) => renderScheduleCard(activeScheduleDay, 'deep_study', item, idx)).join('')}
+                    </div>
+                    <button class="btn-add-slot" type="button" onclick="openAddBlockModal('${activeScheduleDay}', 'deep_study')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Add Deep Study Block
+                    </button>
+                </div>
+
+                <!-- Revision Column -->
+                <div class="schedule-col">
+                    <div class="schedule-col-header">
+                        <h3>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                            Revisions
+                        </h3>
+                        <span class="badge">${revisionList.length}</span>
+                    </div>
+                    <div class="schedule-cards-list">
+                        ${revisionList.length === 0 ? '<div class="empty-slot-placeholder">No revision scheduled for this day</div>' : revisionList.map((item, idx) => renderScheduleCard(activeScheduleDay, 'revision', item, idx)).join('')}
+                    </div>
+                    <button class="btn-add-slot" type="button" onclick="openAddBlockModal('${activeScheduleDay}', 'revision')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Add Revision
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderAllDaysGrid(container) {
+            let html = '';
+            SCHEDULE_DAYS.forEach(day => {
+                const dayData = adminSchedule[day] || { classes: [], deep_study: [], revision: [] };
+                const total = (dayData.classes || []).length + (dayData.deep_study || []).length + (dayData.revision || []).length;
+                html += `
+                    <div class="schedule-col" style="grid-column: 1 / -1; margin-bottom: 1.5rem; background: var(--bg-surface, var(--white));">
+                        <div class="schedule-col-header" style="background: var(--bg-subtle, #f8fafc); padding: 0.75rem 1rem; border-radius: 8px;">
+                            <h3 style="font-size: 1.1rem; color: var(--primary-color);">
+                                ${day}
+                            </h3>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <span class="badge">${total} slots</span>
+                                <button class="btn-secondary" style="padding: 0.3rem 0.65rem; font-size: 0.8rem; border: 1px solid var(--border-color); border-radius: 6px;" onclick="selectScheduleDay('${day}')">Focus Day</button>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; padding: 1rem 0;">
+                            <div>
+                                <h4 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Classes (${(dayData.classes || []).length})</h4>
+                                ${(dayData.classes || []).map((item, idx) => renderScheduleCard(day, 'classes', item, idx)).join('')}
+                            </div>
+                            <div>
+                                <h4 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Deep Study (${(dayData.deep_study || []).length})</h4>
+                                ${(dayData.deep_study || []).map((item, idx) => renderScheduleCard(day, 'deep_study', item, idx)).join('')}
+                            </div>
+                            <div>
+                                <h4 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Revisions (${(dayData.revision || []).length})</h4>
+                                ${(dayData.revision || []).map((item, idx) => renderScheduleCard(day, 'revision', item, idx)).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function renderScheduleCard(day, type, item, index) {
+            const color = item.color || '#3B82F6';
+            const focusItems = item.focus && Array.isArray(item.focus) ? item.focus : [];
+            
+            return `
+                <div class="schedule-card" style="border-left-color: ${color};">
+                    <div class="schedule-card-top">
+                        <span class="subject-badge" style="background: ${color}20; color: ${color}; border: 1px solid ${color}40;">
+                            ${item.subject || 'GENERAL'}
+                        </span>
+                        <span class="time-badge">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            ${item.time || ''}
+                        </span>
+                    </div>
+                    <div class="card-title">${item.title || ''}</div>
+                    ${item.reason ? `<div class="card-reason">${item.reason}</div>` : ''}
+                    ${focusItems.length > 0 ? `
+                        <ul class="card-focus-list">
+                            ${focusItems.map(f => `<li>${f}</li>`).join('')}
+                        </ul>
+                    ` : ''}
+                    <div class="card-actions">
+                        <button class="btn-icon" type="button" title="Reschedule / Change Day" onclick="rescheduleBlockQuick('${day}', '${type}', ${index})">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                        </button>
+                        <button class="btn-icon" type="button" title="Edit Session Block" onclick="openEditBlockModal('${day}', '${type}', ${index})">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                        </button>
+                        <button class="btn-icon delete" type="button" title="Delete Block" onclick="deleteScheduleBlock('${day}', '${type}', ${index})">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function openAddBlockModal(day, type) {
+            document.getElementById('scheduleModalTitle').textContent = 'Add Session Block';
+            document.getElementById('blockMode').value = 'add';
+            document.getElementById('origDay').value = '';
+            document.getElementById('origType').value = '';
+            document.getElementById('origIndex').value = '-1';
+
+            document.getElementById('blockDay').value = day || 'Monday';
+            document.getElementById('blockType').value = type || 'deep_study';
+            document.getElementById('blockSubject').value = 'SMA300';
+            document.getElementById('blockTime').value = '';
+            document.getElementById('blockTitle').value = '';
+            document.getElementById('blockReason').value = '';
+            document.getElementById('blockFocus').value = '';
+
+            handleBlockTypeOrSubjectChange();
+            document.getElementById('scheduleBlockModal').style.display = 'block';
+        }
+
+        function openEditBlockModal(day, type, index) {
+            const list = (adminSchedule[day] && adminSchedule[day][type]) || [];
+            const item = list[index];
+            if (!item) return;
+
+            document.getElementById('scheduleModalTitle').textContent = 'Edit Session Block';
+            document.getElementById('blockMode').value = 'edit';
+            document.getElementById('origDay').value = day;
+            document.getElementById('origType').value = type;
+            document.getElementById('origIndex').value = index;
+
+            document.getElementById('blockDay').value = day;
+            document.getElementById('blockType').value = type;
+            
+            const subjSelect = document.getElementById('blockSubject');
+            let hasSubj = false;
+            for (let opt of subjSelect.options) {
+                if (opt.value === item.subject) {
+                    hasSubj = true;
+                    break;
+                }
+            }
+            subjSelect.value = hasSubj ? item.subject : 'CUSTOM';
+
+            document.getElementById('blockTime').value = item.time || '';
+            document.getElementById('blockTitle').value = item.title || '';
+            document.getElementById('blockColor').value = item.color || '#3B82F6';
+            document.getElementById('blockColorPicker').value = item.color || '#3B82F6';
+            document.getElementById('blockReason').value = item.reason || '';
+            document.getElementById('blockFocus').value = (item.focus || []).join('\n');
+
+            document.getElementById('scheduleBlockModal').style.display = 'block';
+        }
+
+        function closeScheduleModal() {
+            document.getElementById('scheduleBlockModal').style.display = 'none';
+        }
+
+        function handleBlockTypeOrSubjectChange() {
+            const subj = document.getElementById('blockSubject').value;
+            const type = document.getElementById('blockType').value;
+            const titleInput = document.getElementById('blockTitle');
+            const colorInput = document.getElementById('blockColor');
+            const colorPicker = document.getElementById('blockColorPicker');
+
+            if (subj !== 'CUSTOM' && adminSubjects[subj]) {
+                const info = adminSubjects[subj];
+                if (info.color) {
+                    colorInput.value = info.color;
+                    colorPicker.value = info.color;
+                }
+                if (document.getElementById('blockMode').value === 'add') {
+                    if (type === 'deep_study') {
+                        titleInput.value = `${subj} Deep Study`;
+                    } else if (type === 'revision') {
+                        titleInput.value = `${subj} Revision`;
+                    } else {
+                        titleInput.value = info.title || subj;
+                    }
+                }
+            }
+        }
+
+        function handleScheduleFormSubmit(event) {
+            event.preventDefault();
+            if (!adminSchedule) return;
+
+            const mode = document.getElementById('blockMode').value;
+            const origDay = document.getElementById('origDay').value;
+            const origType = document.getElementById('origType').value;
+            const origIndex = parseInt(document.getElementById('origIndex').value, 10);
+
+            const newDay = document.getElementById('blockDay').value;
+            const newType = document.getElementById('blockType').value;
+            let subject = document.getElementById('blockSubject').value;
+            const time = document.getElementById('blockTime').value.trim();
+            const title = document.getElementById('blockTitle').value.trim();
+            const color = document.getElementById('blockColor').value.trim();
+            const reason = document.getElementById('blockReason').value.trim();
+            const focusRaw = document.getElementById('blockFocus').value;
+            const focus = focusRaw.split('\n').map(s => s.trim()).filter(Boolean);
+
+            const block = {
+                time,
+                subject,
+                title,
+                color: color || '#3B82F6'
+            };
+            if (reason) {
+                block.reason = reason;
+            }
+            if (focus.length > 0) {
+                block.focus = focus;
+            }
+
+            if (!adminSchedule[newDay]) adminSchedule[newDay] = {};
+            if (!adminSchedule[newDay][newType]) adminSchedule[newDay][newType] = [];
+
+            if (mode === 'edit' && origDay && origType && origIndex >= 0) {
+                if (adminSchedule[origDay] && adminSchedule[origDay][origType]) {
+                    adminSchedule[origDay][origType].splice(origIndex, 1);
+                }
+            }
+
+            adminSchedule[newDay][newType].push(block);
+            markScheduleDirty();
+            renderDaySelectorBar();
+            renderScheduleGrid();
+            closeScheduleModal();
+        }
+
+        function deleteScheduleBlock(day, type, index) {
+            if (!confirm('Are you sure you want to remove this session block from the timetable?')) {
+                return;
+            }
+            if (adminSchedule[day] && adminSchedule[day][type]) {
+                adminSchedule[day][type].splice(index, 1);
+                markScheduleDirty();
+                renderDaySelectorBar();
+                renderScheduleGrid();
+            }
+        }
+
+        function rescheduleBlockQuick(day, type, index) {
+            const item = adminSchedule[day] && adminSchedule[day][type] && adminSchedule[day][type][index];
+            if (!item) return;
+
+            const daysList = SCHEDULE_DAYS.join(', ');
+            const targetDay = prompt(`Move "${item.title}" to which day? (${daysList})`, day);
+            if (!targetDay) return;
+
+            const matchedDay = SCHEDULE_DAYS.find(d => d.toLowerCase() === targetDay.trim().toLowerCase());
+            if (!matchedDay) {
+                alert('Invalid day entered. Please enter one of: ' + daysList);
+                return;
+            }
+
+            const newTime = prompt(`Time for "${item.title}" on ${matchedDay}:`, item.time || '');
+            if (newTime === null) return;
+
+            adminSchedule[day][type].splice(index, 1);
+            
+            const updatedItem = { ...item, time: newTime.trim() || item.time };
+            if (!adminSchedule[matchedDay]) adminSchedule[matchedDay] = {};
+            if (!adminSchedule[matchedDay][type]) adminSchedule[matchedDay][type] = [];
+            adminSchedule[matchedDay][type].push(updatedItem);
+
+            markScheduleDirty();
+            activeScheduleDay = matchedDay;
+            renderDaySelectorBar();
+            renderScheduleGrid();
+        }
+
+        function markScheduleDirty() {
+            isScheduleDirty = true;
+            const banner = document.getElementById('unsavedBanner');
+            if (banner) banner.classList.add('visible');
+            const saveBtn = document.getElementById('saveScheduleBtn');
+            if (saveBtn) saveBtn.classList.add('pulse');
+        }
+
+        async function saveScheduleToServer() {
+            if (!adminSchedule) return;
+            const saveBtn = document.getElementById('saveScheduleBtn');
+            const origText = saveBtn ? saveBtn.innerHTML : '';
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = 'Saving...';
+            }
+
+            try {
+                const res = await fetch('/api/admin/schedule', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ schedule: adminSchedule })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    isScheduleDirty = false;
+                    const banner = document.getElementById('unsavedBanner');
+                    if (banner) banner.classList.remove('visible');
+                    if (saveBtn) saveBtn.classList.remove('pulse');
+                    alert('Schedule successfully saved and applied to live timetable!');
+                } else {
+                    alert('Failed to save schedule: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Error saving schedule:', err);
+                alert('Error saving schedule to server');
+            } finally {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = origText;
+                }
+            }
+        }
+
+        async function resetScheduleToDefault() {
+            if (!confirm('Are you sure you want to revert all timetable modifications to the default canonical 7-course balanced schedule? Any custom edits will be replaced.')) {
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/admin/schedule/reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await res.json();
+                if (result.success) {
+                    adminSchedule = result.schedule;
+                    isScheduleDirty = false;
+                    const banner = document.getElementById('unsavedBanner');
+                    if (banner) banner.classList.remove('visible');
+                    const saveBtn = document.getElementById('saveScheduleBtn');
+                    if (saveBtn) saveBtn.classList.remove('pulse');
+                    renderDaySelectorBar();
+                    renderScheduleGrid();
+                    alert('Timetable reset to the canonical 7-course balanced schedule.');
+                } else {
+                    alert('Failed to reset schedule: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Error resetting schedule:', err);
+                alert('Error resetting schedule');
+            }
+        }
+
         function closeModal() {
             document.getElementById('editModal').style.display = 'none';
         }
@@ -1276,6 +2327,10 @@
             const sessionModal = document.getElementById('editModal');
             if (e.target === sessionModal) {
                 closeModal();
+            }
+            const schedModal = document.getElementById('scheduleBlockModal');
+            if (e.target === schedModal) {
+                closeScheduleModal();
             }
         });
     </script>

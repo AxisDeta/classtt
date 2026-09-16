@@ -242,6 +242,15 @@ class DatabaseManager:
                 FOREIGN KEY (note_id) REFERENCES studytt_notes(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """)
+
+            # Timetable & Schedule Configuration Table
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS studytt_schedule_config (
+                id INT PRIMARY KEY,
+                config_json LONGTEXT NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
             
             conn.commit()
             cursor.close()
@@ -1407,6 +1416,57 @@ class DatabaseManager:
         except mysql.connector.Error as err:
             LOG.error(f"✗ Failed to delete attachment {attachment_id}: {err}")
             return None
+
+    def get_schedule_config(self):
+        """Retrieve saved custom schedule configuration from database"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT config_json FROM studytt_schedule_config WHERE id = 1")
+            row = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            if row and row.get('config_json'):
+                import json
+                return json.loads(row['config_json'])
+            return None
+        except Exception as err:
+            LOG.error(f"Error fetching schedule config: {err}")
+            return None
+
+    def save_schedule_config(self, schedule_dict):
+        """Save custom schedule configuration to database"""
+        try:
+            import json
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            config_json = json.dumps(schedule_dict, ensure_ascii=False)
+            cursor.execute("""
+                INSERT INTO studytt_schedule_config (id, config_json)
+                VALUES (1, %s)
+                ON DUPLICATE KEY UPDATE config_json = VALUES(config_json)
+            """, (config_json,))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return True
+        except Exception as err:
+            LOG.error(f"Error saving schedule config: {err}")
+            return False
+
+    def reset_schedule_config(self):
+        """Delete saved custom schedule configuration to revert to default"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM studytt_schedule_config WHERE id = 1")
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return True
+        except Exception as err:
+            LOG.error(f"Error resetting schedule config: {err}")
+            return False
 
 # Initialize global database manager
 db = None

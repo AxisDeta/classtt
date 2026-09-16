@@ -7,6 +7,7 @@ from functools import wraps, lru_cache
 from time import time
 from dotenv import load_dotenv
 import bcrypt
+import copy
 
 # Load environment variables
 load_dotenv()
@@ -197,18 +198,6 @@ schedule_data = {
                     "Spectral decomposition and eigen-properties",
                     "Derive multivariate normal density"
                 ]
-            },
-            {
-                "time": "2:30pm – 4:30pm",
-                "subject": "SST101",
-                "title": "SST 101 Deep Study (retake)",
-                "color": "#EC4899",
-                "reason": "Free slot in an otherwise light afternoon. Placeholder until the actual SST 101 lecture time is confirmed — move right after the real lecture once known.",
-                "focus": [
-                    "Target prior CAT/exam weak points",
-                    "Probability distributions and Bayes theorem",
-                    "Hypothesis testing worked problems"
-                ]
             }
         ],
         "revision": [
@@ -325,10 +314,15 @@ schedule_data = {
         "deep_study": [
             {
                 "time": "8:00am – 10:00am",
-                "subject": "SMA300",
-                "title": "SMA 300 Bonus Deep Study",
-                "color": "#10B981",
-                "reason": "Real Analysis 3rd weekly touchpoint. Fully rested morning to push into harder problem sets or past-paper problems."
+                "subject": "SST101",
+                "title": "SST 101 Deep Study (Retake)",
+                "color": "#EC4899",
+                "reason": "Dedicated weekend morning deep work session for Probability & Statistics retake. Uninterrupted focus on worked problem drills, distributions, and past CAT/exam questions.",
+                "focus": [
+                    "Target prior CAT/exam weak points",
+                    "Probability distributions and Bayes theorem",
+                    "Hypothesis testing worked problems and calculations"
+                ]
             }
         ],
         "revision": [
@@ -347,7 +341,20 @@ schedule_data = {
     "Sunday": {
         "day_number": 7,
         "classes": [],
-        "deep_study": [],
+        "deep_study": [
+            {
+                "time": "10:00am – 12:00pm",
+                "subject": "SST301",
+                "title": "SST 301 Deep Study",
+                "color": "#06B6D4",
+                "reason": "Statistical programming hands-on lab block. Focus on writing clean, robust scripts from scratch without copying, building simulation models, and data wrangling pipelines.",
+                "focus": [
+                    "Statistical simulation and Monte Carlo methods",
+                    "Vectorized operations and functional data pipelines in R/Python",
+                    "Write one complete data analysis script end-to-end"
+                ]
+            }
+        ],
         "revision": [
             {
                 "time": "4:00pm – 5:00pm",
@@ -372,6 +379,21 @@ schedule_data = {
         ]
     }
 }
+
+DEFAULT_SCHEDULE_DATA = copy.deepcopy(schedule_data)
+
+def get_active_schedule():
+    """Get active schedule: loads from DB if custom schedule saved, else fallback to schedule_data"""
+    global schedule_data
+    if db:
+        try:
+            saved = db.get_schedule_config()
+            if saved and isinstance(saved, dict) and "Monday" in saved:
+                schedule_data = saved
+                return schedule_data
+        except Exception as err:
+            LOG.error(f"Error fetching active schedule from db: {err}")
+    return schedule_data
 
 subject_info = {
     "SMA300": {
@@ -611,6 +633,65 @@ def clear_database():
         LOG.error(f"Error clearing database: {err}")
         return jsonify({"error": str(err)}), 500
 
+@app.route('/api/admin/schedule', methods=['GET'])
+@admin_required
+def admin_get_schedule():
+    """Get active schedule and metadata for admin editing"""
+    active = get_active_schedule()
+    return jsonify({
+        "success": True,
+        "schedule": active,
+        "default_schedule": DEFAULT_SCHEDULE_DATA,
+        "subjects": subject_info
+    }), 200
+
+@app.route('/api/admin/schedule', methods=['POST'])
+@admin_required
+def admin_save_schedule():
+    """Save custom schedule to database and active memory"""
+    global schedule_data
+    try:
+        data = request.get_json() or {}
+        new_schedule = data.get('schedule')
+        if not new_schedule or not isinstance(new_schedule, dict):
+            return jsonify({"error": "Invalid schedule payload"}), 400
+        
+        required_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        for day in required_days:
+            if day not in new_schedule:
+                return jsonify({"error": f"Missing required day in schedule: {day}"}), 400
+            day_obj = new_schedule[day]
+            if not isinstance(day_obj, dict):
+                return jsonify({"error": f"Day {day} must be an object"}), 400
+            for slot_key in ["classes", "deep_study", "revision"]:
+                if slot_key in day_obj and not isinstance(day_obj[slot_key], list):
+                    return jsonify({"error": f"{slot_key} in {day} must be a list"}), 400
+        
+        if db:
+            saved = db.save_schedule_config(new_schedule)
+            if not saved:
+                return jsonify({"error": "Failed to persist schedule to database"}), 500
+        
+        schedule_data = new_schedule
+        return jsonify({"success": True, "message": "Schedule saved successfully", "schedule": schedule_data}), 200
+    except Exception as err:
+        LOG.error(f"Error saving schedule in admin: {err}")
+        return jsonify({"error": str(err)}), 500
+
+@app.route('/api/admin/schedule/reset', methods=['POST'])
+@admin_required
+def admin_reset_schedule():
+    """Reset schedule to the default canonical 7-course 7-day schedule"""
+    global schedule_data
+    try:
+        if db:
+            db.reset_schedule_config()
+        schedule_data = copy.deepcopy(DEFAULT_SCHEDULE_DATA)
+        return jsonify({"success": True, "message": "Schedule reset to canonical default", "schedule": schedule_data}), 200
+    except Exception as err:
+        LOG.error(f"Error resetting schedule in admin: {err}")
+        return jsonify({"error": str(err)}), 500
+
 @app.route('/api/admin/sessions', methods=['GET'])
 @admin_required
 def get_all_sessions():
@@ -680,16 +761,16 @@ def healthz():
     return jsonify({"status": "ok"}), 200
 
 @app.route('/api/schedule')
-@simple_cache(timeout=30)
 def get_schedule():
+    active_sched = get_active_schedule()
     response = jsonify({
-        "schedule": schedule_data,
+        "schedule": active_sched,
         "subjects": subject_info,
         "strategy": rules_and_strategy,
         "semester_title": "3rd Year, 1st Semester",
         "date_range": "3rd Year, 1st Semester"
     })
-    response.headers['Cache-Control'] = 'public, max-age=30'
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     return response
 
 @app.route('/api/strategy')
