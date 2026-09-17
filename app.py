@@ -27,6 +27,22 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = IS_PRODUCTION
 
+class CustomJSONProvider(app.json_provider_class):
+    """Ensure datetime.timedelta and dates serialize cleanly to JSON"""
+    def default(self, obj):
+        if isinstance(obj, timedelta):
+            total_seconds = int(obj.total_seconds())
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
+            if seconds > 0:
+                return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+            return f"{hours:02d}:{minutes:02d}"
+        return super().default(obj)
+
+app.json_provider_class = CustomJSONProvider
+app.json = CustomJSONProvider(app)
+
 # Initialize session
 from flask_session import Session
 Session(app)

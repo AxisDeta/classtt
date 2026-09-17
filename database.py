@@ -5,7 +5,7 @@ Handles MySQL connections and operations for tracking study progress
 
 import mysql.connector
 from mysql.connector import pooling
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import os
 import logging
 
@@ -754,8 +754,8 @@ class DatabaseManager:
                 id,
                 subject_code,
                 session_type,
-                scheduled_date,
-                scheduled_time,
+                DATE_FORMAT(scheduled_date, '%Y-%m-%d') as scheduled_date,
+                TIME_FORMAT(scheduled_time, '%H:%i') as scheduled_time,
                 actual_start,
                 actual_end,
                 duration_minutes,
@@ -765,18 +765,25 @@ class DatabaseManager:
                 created_at,
                 updated_at
             FROM studytt_sessions
-            ORDER BY scheduled_date DESC, scheduled_time DESC
+            ORDER BY studytt_sessions.scheduled_date DESC, studytt_sessions.scheduled_time DESC
             """)
             
             columns = [desc[0] for desc in cursor.description]
             results = []
             for row in cursor.fetchall():
-                results.append(dict(zip(columns, row)))
+                item = dict(zip(columns, row))
+                for k, v in item.items():
+                    if isinstance(v, timedelta):
+                        total_seconds = int(v.total_seconds())
+                        item[k] = f"{total_seconds // 3600:02d}:{(total_seconds % 3600) // 60:02d}"
+                    elif isinstance(v, (datetime, date)):
+                        item[k] = v.isoformat()
+                results.append(item)
             
             cursor.close()
             conn.close()
             
-            return results if results else []
+            return results
         
         except mysql.connector.Error as err:
             LOG.error(f"✗ Failed to get sessions for admin: {err}")
@@ -808,11 +815,18 @@ class DatabaseManager:
             columns = [desc[0] for desc in cursor.description]
             results = []
             for row in cursor.fetchall():
-                results.append(dict(zip(columns, row)))
+                item = dict(zip(columns, row))
+                for k, v in item.items():
+                    if isinstance(v, timedelta):
+                        total_seconds = int(v.total_seconds())
+                        item[k] = f"{total_seconds // 3600:02d}:{(total_seconds % 3600) // 60:02d}"
+                    elif isinstance(v, (datetime, date)):
+                        item[k] = v.isoformat()
+                results.append(item)
 
             cursor.close()
             conn.close()
-            return results if results else []
+            return results
 
         except mysql.connector.Error as err:
             LOG.error(f"✗ Failed to get tasks for admin: {err}")
