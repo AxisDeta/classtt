@@ -2,1225 +2,985 @@
 <html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Study Scheduler</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Timetable Admin & Scheduler — StudyPath</title>
     <script>
-        var theme = localStorage.getItem('theme') || 'light';
-        document.documentElement.setAttribute('data-theme', theme);
+        (function() {
+            var theme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
     </script>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260908v16') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .admin-header {
+        /* Admin-specific extensions built on StudyPath's solid design system */
+        .admin-hero-toolbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2rem;
-            padding: 1rem;
-            background: var(--white);
-            border-radius: 12px;
-            box-shadow: var(--shadow-md);
-        }
-        
-        .admin-actions {
-            display: flex;
+            flex-wrap: wrap;
             gap: 1rem;
-            margin-bottom: 2rem;
+            margin-bottom: 1.25rem;
         }
 
-        .table-toolbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-            padding: 1rem;
-            border-bottom: 1px solid var(--border-color);
-            background: var(--white);
-        }
-
-        .table-toolbar h2 {
-            margin: 0;
+        .admin-hero-toolbar h2 {
+            font-size: 1.125rem;
+            font-weight: 700;
             color: var(--text-primary);
-            font-size: 1.05rem;
+            letter-spacing: -0.01em;
+            margin-bottom: 0.25rem;
         }
 
-        .selection-actions {
+        .admin-hero-toolbar p {
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .admin-toolbar-actions {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.5rem;
             flex-wrap: wrap;
         }
 
-        .selection-count {
+        .btn-sm {
+            height: 34px !important;
+            padding: 0 0.85rem !important;
+            font-size: 0.8125rem !important;
+            font-weight: 600 !important;
+            border-radius: var(--radius-sm) !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 0.35rem !important;
+            cursor: pointer !important;
+            text-decoration: none !important;
+            box-sizing: border-box !important;
+            transition: all 0.15s ease !important;
+        }
+
+        .btn-secondary {
+            background: var(--bg-surface) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-color) !important;
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-surface-hover) !important;
+            border-color: var(--border-hover) !important;
+        }
+
+        .btn-success-solid {
+            background: #059669 !important;
+            color: #ffffff !important;
+            border: 1px solid #059669 !important;
+        }
+
+        .btn-success-solid:hover {
+            background: #047857 !important;
+            border-color: #047857 !important;
+        }
+
+        .btn-danger-solid {
+            background: #dc2626 !important;
+            color: #ffffff !important;
+            border: 1px solid #dc2626 !important;
+        }
+
+        .btn-danger-solid:hover {
+            background: #b91c1c !important;
+            border-color: #b91c1c !important;
+        }
+
+        .btn-pulse {
+            box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.5);
+            animation: admin-pulse 2s infinite;
+        }
+
+        @keyframes admin-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.6); }
+            70% { box-shadow: 0 0 0 8px rgba(5, 150, 105, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0); }
+        }
+
+        .unsaved-alert-banner {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--warning-bg);
+            border: 1px solid var(--warning-border);
+            color: var(--warning-text);
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 1.25rem;
+            font-size: 0.8125rem;
+            font-weight: 500;
+        }
+
+        .unsaved-alert-banner.visible {
+            display: flex;
+        }
+
+        /* 3-Column Schedule Grid */
+        .schedule-admin-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 1.25rem;
+            align-items: start;
+        }
+
+        @media (max-width: 992px) {
+            .schedule-admin-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .schedule-admin-col {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.1rem;
+            box-shadow: var(--shadow-subtle);
+            display: flex;
+            flex-direction: column;
+            min-height: 300px;
+        }
+
+        .col-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.65rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .col-header-title {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .col-header-title svg {
+            width: 16px;
+            height: 16px;
             color: var(--text-secondary);
-            font-size: 0.9rem;
+        }
+
+        .col-badge {
+            font-size: 0.6875rem;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: var(--radius-sm);
+            background: var(--badge-bg);
+            color: var(--badge-text);
+            border: 1px solid var(--badge-border);
+        }
+
+        .col-cards-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            flex: 1;
+        }
+
+        .admin-slot-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--text-muted);
+            border-radius: var(--radius-md);
+            padding: 0.85rem;
+            box-shadow: var(--shadow-subtle);
+            transition: all 0.15s ease;
+        }
+
+        .admin-slot-card:hover {
+            border-color: var(--border-hover);
+            background: var(--bg-surface-hover);
+        }
+
+        .slot-top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .slot-subject-badge {
+            font-size: 0.6875rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+            letter-spacing: 0.03em;
+        }
+
+        .slot-time-text {
+            font-size: 0.75rem;
             font-weight: 600;
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
         }
 
-        .bulk-delete-btn:disabled {
-            opacity: 0.55;
-            cursor: not-allowed;
+        .slot-time-text svg {
+            width: 12px;
+            height: 12px;
+            color: var(--text-muted);
         }
 
-        .select-col {
-            width: 44px;
+        .slot-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.35;
+            margin-bottom: 0.35rem;
+        }
+
+        .slot-reason-box {
+            font-size: 0.775rem;
+            color: var(--text-secondary);
+            background: var(--bg-subtle);
+            border-left: 2px solid var(--border-color);
+            padding: 0.45rem 0.6rem;
+            border-radius: 4px;
+            margin-top: 0.35rem;
+            line-height: 1.4;
+        }
+
+        .slot-focus-ul {
+            margin: 0.4rem 0 0 0;
+            padding-left: 1.15rem;
+            font-size: 0.775rem;
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        .slot-focus-ul li {
+            margin-bottom: 0.15rem;
+        }
+
+        .slot-actions-row {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.35rem;
+            margin-top: 0.65rem;
+            padding-top: 0.45rem;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .action-icon-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .action-icon-btn:hover {
+            color: var(--text-primary);
+            border-color: var(--border-hover);
+            background: var(--bg-surface-hover);
+        }
+
+        .action-icon-btn.delete:hover {
+            color: var(--danger-text);
+            border-color: var(--danger-border);
+            background: var(--danger-bg);
+        }
+
+        .btn-add-col-slot {
+            width: 100%;
+            margin-top: 0.85rem;
+            background: transparent;
+            border: 1px dashed var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.55rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8125rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            transition: all 0.15s ease;
+        }
+
+        .btn-add-col-slot:hover {
+            background: var(--bg-surface-hover);
+            border-color: var(--text-primary);
+            color: var(--text-primary);
+        }
+
+        .empty-col-state {
+            padding: 2.5rem 1rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8125rem;
+            border: 1px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            margin: auto 0;
+        }
+
+        /* Clean Admin Table Styling */
+        .admin-data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8125rem;
+            margin-top: 0.75rem;
+        }
+
+        .admin-data-table th,
+        .admin-data-table td {
+            padding: 0.65rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .admin-data-table th {
+            background: var(--bg-muted);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .admin-data-table tr:hover td {
+            background: var(--bg-surface-hover);
+        }
+
+        .select-checkbox-col {
+            width: 36px;
             text-align: center !important;
         }
 
-        .row-select,
-        .select-all {
-            width: 16px;
-            height: 16px;
-            cursor: pointer;
-        }
-        
-        .btn-danger {
-            background: var(--danger-color);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        
-        .btn-danger:hover {
-            background: #c82333;
-        }
-        
-        .sessions-table {
-            background: var(--white);
-            border-radius: 12px;
-            box-shadow: var(--shadow-md);
-            overflow: hidden;
-        }
-        
-        .sessions-table table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        .sessions-table th,
-        .sessions-table td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        .sessions-table th {
-            background: var(--light-bg);
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        
-        .sessions-table tr:hover {
-            background: var(--light-bg);
-        }
-        
-        .tasks-table {
-            margin-top: 2rem;
-            background: var(--white);
-            border-radius: 12px;
-            box-shadow: var(--shadow-md);
-            overflow: hidden;
-            padding: 1rem;
-        }
-
-        .tasks-table h2 {
-            margin: 0 0 1rem 0;
-            color: var(--text-primary);
-        }
-
-        .tasks-table table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .tasks-table th,
-        .tasks-table td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .tasks-table th {
-            background: var(--light-bg);
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .tasks-table tr:hover {
-            background: var(--light-bg);
-        }
-
-        .history-panel {
-            background: var(--white);
-            border-radius: 12px;
-            box-shadow: var(--shadow-md);
-            padding: 1rem;
-            margin-bottom: 2rem;
-            border: 1px solid var(--border-color);
-        }
-
-        .history-header {
+        .admin-subnav {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 1rem;
             margin-bottom: 1rem;
-        }
-
-        .history-header h2 {
-            margin: 0;
-            color: var(--text-primary);
-        }
-
-        .history-controls {
-            display: flex;
-            align-items: end;
-            gap: 0.75rem;
             flex-wrap: wrap;
-        }
-
-        .history-controls label {
-            display: grid;
-            gap: 0.35rem;
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            font-weight: 700;
-        }
-
-        .history-controls input {
-            min-height: 40px;
-            padding: 0.55rem 0.75rem;
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            background: var(--light-bg);
-            color: var(--text-primary);
-        }
-
-        .history-summary {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 0.75rem;
-            margin-bottom: 1rem;
         }
 
-        .history-stat {
-            background: var(--light-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 14px;
-            padding: 0.8rem;
-        }
-
-        .history-stat span {
-            display: block;
-            color: var(--text-secondary);
-            font-size: 0.82rem;
-            font-weight: 700;
-            margin-bottom: 0.3rem;
-        }
-
-        .history-stat strong {
-            color: var(--text-primary);
-            font-size: 1.15rem;
-        }
-
-        .history-charts {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 1rem;
-        }
-
-        .history-chart {
-            background: var(--light-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 14px;
-            padding: 1rem;
-            min-width: 0;
-        }
-
-        .history-chart h3 {
-            margin: 0 0 0.75rem 0;
-            color: var(--text-primary);
-            font-size: 0.95rem;
-        }
-
-        .history-chart canvas {
-            max-height: 260px;
-        }
-
-        .admin-task-card {
-            background: var(--light-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 1.25rem 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: var(--shadow-sm);
-        }
-
-        .admin-task-card h3 {
-            margin-top: 0;
-            margin-bottom: 0.75rem;
-            color: var(--text-primary);
-        }
-
-        .admin-task-form {
+        .admin-history-stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 1rem;
-            align-items: end;
+            margin-bottom: 1.5rem;
         }
 
-        .admin-task-form .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.35rem;
-        }
-
-        .admin-task-form label {
-            font-size: 0.8125rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-
-        .admin-task-form input,
-        .admin-task-form select {
-            width: 100%;
-            padding: 0.5rem 0.75rem;
+        .admin-stat-box {
+            background: var(--bg-surface);
             border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background: var(--white);
-            color: var(--text-primary);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            box-shadow: var(--shadow-subtle);
         }
 
-        .admin-task-form button {
-            grid-column: 1 / -1;
-            justify-self: end;
-            padding: 0.5rem 1rem;
-            border: 1px solid var(--primary-color);
-            border-radius: 4px;
-            background: var(--primary-color);
-            color: #fff;
+        .admin-stat-box span {
+            font-size: 0.75rem;
+            color: var(--text-muted);
             font-weight: 600;
-            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
         }
 
-        .session-actions {
-            display: flex;
-            gap: 0.5rem;
+        .admin-stat-box strong {
+            display: block;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-top: 0.25rem;
         }
-        
-        .btn-edit,
-        .btn-delete {
-            padding: 0.25rem 0.5rem;
-            border: none;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            font-weight: 500;
+
+        .admin-charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.25rem;
         }
-        
-        .btn-edit {
-            background: var(--primary-color);
-            color: white;
-        }
-        
-        .btn-edit:hover {
-            background: var(--primary-dark);
-        }
-        
-        .btn-delete {
-            background: var(--danger-color);
-            color: white;
-        }
-        
-        .btn-delete:hover {
-            background: #c82333;
-        }
-        
-        .modal {
+
+        /* Modal Overlays & Components */
+        .admin-modal-backdrop {
             display: none;
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-        }
-        
-        .modal-content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: var(--white);
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: var(--shadow-xl);
-            max-width: 600px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(2px);
+            z-index: 999;
             align-items: center;
-            margin-bottom: 1.5rem;
+            justify-content: center;
+            padding: 1rem;
+            box-sizing: border-box;
         }
-        
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: var(--text-secondary);
-        }
-        
-        .form-row {
+
+        .admin-modal-backdrop.open {
             display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
         }
-        
-        .form-group {
-            flex: 1;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
+
+        .admin-modal-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
             width: 100%;
-            padding: 0.5rem;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            font-size: 0.9rem;
-        }
-        
-        .form-group textarea {
-            min-height: 80px;
-            resize: vertical;
-        }
-        
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .modal-actions {
-            display: flex;
-            gap: 1rem;
-            justify-content: flex-end;
-            margin-top: 1.5rem;
-        }
-        
-        .alert {
-            padding: 0.75rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            font-weight: 500;
-        }
-        
-        .alert-error {
-            background: #fee2e2;
-            color: #dc2626;
-            border: 1px solid #fecaca;
-        }
-        
-        .alert-success {
-            background: #d1fae5;
-            color: #059669;
-            border: 1px solid #a7f3d0;
+            max-width: 580px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
         }
 
-        @media (max-width: 820px) {
-            .history-header,
-            .history-controls {
-                align-items: stretch;
-                flex-direction: column;
-            }
-
-        /* Tab Navigation */
-        .admin-nav-tabs {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1.5rem;
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 0.25rem;
-            flex-wrap: wrap;
-        }
-
-        .nav-tab {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1.25rem;
-            border: none;
-            background: transparent;
-            color: var(--text-secondary);
-            font-weight: 600;
-            font-size: 0.95rem;
-            border-radius: 8px 8px 0 0;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-
-        .nav-tab:hover {
-            color: var(--text-primary);
-            background: var(--bg-surface-hover, var(--light-bg));
-        }
-
-        .nav-tab.active {
-            color: var(--primary-color);
-            background: var(--bg-surface, var(--white));
-            border-bottom: 2px solid var(--primary-color);
-            margin-bottom: -2px;
-        }
-
-        .admin-tab-content {
-            display: none;
-        }
-
-        .admin-tab-content.active {
-            display: block;
-        }
-
-        /* Schedule Manager Panel */
-        .schedule-manager-panel {
-            background: var(--bg-surface, var(--white));
-            border-radius: 12px;
-            box-shadow: var(--shadow-md);
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            border: 1px solid var(--border-color);
-        }
-
-        .schedule-toolbar {
+        .admin-modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-            margin-bottom: 1.25rem;
-            padding-bottom: 1rem;
+            padding: 1.1rem 1.25rem;
             border-bottom: 1px solid var(--border-color);
         }
 
-        .schedule-toolbar h2 {
+        .admin-modal-header h3 {
             margin: 0;
-            font-size: 1.25rem;
+            font-size: 1rem;
+            font-weight: 700;
             color: var(--text-primary);
         }
 
-        .schedule-toolbar p {
-            margin: 0.25rem 0 0 0;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
+        .admin-modal-body {
+            padding: 1.25rem;
         }
 
-        .schedule-actions {
+        .admin-modal-footer {
             display: flex;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .btn-success {
-            background: #10B981;
-            color: #ffffff;
-            border: none;
-            padding: 0.65rem 1.25rem;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            transition: all 0.2s ease;
-        }
-
-        .btn-success:hover {
-            background: #059669;
-        }
-
-        .btn-success.pulse {
-            animation: pulse-ring 2s infinite;
-        }
-
-        @keyframes pulse-ring {
-            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-        }
-
-        .unsaved-banner {
-            display: none;
-            align-items: center;
-            justify-content: space-between;
-            background: var(--warning-bg, #fffbeb);
-            color: var(--warning-text, #92400e);
-            border: 1px solid var(--warning-border, #fde68a);
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            margin-bottom: 1.25rem;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .unsaved-banner.visible {
-            display: flex;
-        }
-
-        /* Day Selector Bar */
-        .day-selector-bar {
-            display: flex;
+            justify-content: flex-end;
             gap: 0.5rem;
-            overflow-x: auto;
-            padding-bottom: 0.75rem;
-            margin-bottom: 1.5rem;
-            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 1.25rem;
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-subtle);
+            border-radius: 0 0 var(--radius-lg) var(--radius-lg);
         }
 
-        .day-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            border: 1px solid var(--border-color);
-            background: var(--bg-surface-hover, var(--light-bg));
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: all 0.15s ease;
-        }
-
-        .day-pill:hover {
-            border-color: var(--primary-color);
-            color: var(--text-primary);
-        }
-
-        .day-pill.active {
-            background: var(--primary-color);
-            color: var(--primary-contrast, #ffffff);
-            border-color: var(--primary-color);
-        }
-
-        .day-pill .count-badge {
-            background: rgba(0, 0, 0, 0.12);
-            padding: 0.1rem 0.45rem;
-            border-radius: 10px;
-            font-size: 0.75rem;
-        }
-
-        .day-pill.active .count-badge {
-            background: rgba(255, 255, 255, 0.25);
-        }
-
-        /* 3-Column Schedule Grid */
-        .schedule-columns-grid {
+        .form-grid-2 {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1.25rem;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.85rem;
         }
 
-        @media (max-width: 1024px) {
-            .schedule-columns-grid {
+        @media (max-width: 580px) {
+            .form-grid-2 {
                 grid-template-columns: 1fr;
             }
         }
 
-        .schedule-col {
-            background: var(--bg-page, #f8fafc);
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            min-height: 250px;
+        .admin-form-group {
+            margin-bottom: 0.9rem;
         }
 
-        .schedule-col-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .schedule-col-header h3 {
-            margin: 0;
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-
-        .schedule-col-header .badge {
-            font-size: 0.75rem;
-            font-weight: 600;
-            padding: 0.15rem 0.5rem;
-            border-radius: 12px;
-            background: var(--border-color);
-            color: var(--text-secondary);
-        }
-
-        .schedule-cards-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-            flex: 1;
-        }
-
-        .schedule-card {
-            background: var(--bg-surface, var(--white));
-            border: 1px solid var(--border-color);
-            border-left: 4px solid var(--primary-color);
-            border-radius: 8px;
-            padding: 0.85rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            transition: all 0.2s ease;
-        }
-
-        .schedule-card:hover {
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
-            border-color: var(--border-hover, #cbd5e1);
-        }
-
-        .schedule-card-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.4rem;
-            flex-wrap: wrap;
-            gap: 0.35rem;
-        }
-
-        .subject-badge {
-            font-size: 0.75rem;
-            font-weight: 700;
-            padding: 0.2rem 0.55rem;
-            border-radius: 6px;
-            letter-spacing: 0.02em;
-        }
-
-        .time-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
+        .admin-form-group label {
+            display: block;
             font-size: 0.775rem;
-            color: var(--text-secondary);
-            font-weight: 500;
-        }
-
-        .card-title {
-            font-size: 0.925rem;
             font-weight: 600;
             color: var(--text-primary);
-            margin: 0.25rem 0 0.4rem 0;
-            line-height: 1.35;
+            margin-bottom: 0.35rem;
         }
 
-        .card-reason {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            background: var(--bg-subtle, #f8fafc);
-            padding: 0.5rem;
-            border-radius: 6px;
-            border-left: 2px solid var(--border-color);
-            margin-top: 0.4rem;
-            line-height: 1.4;
-        }
-
-        .card-focus-list {
-            margin: 0.5rem 0 0 0;
-            padding-left: 1.25rem;
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            line-height: 1.45;
-        }
-
-        .card-focus-list li {
-            margin-bottom: 0.2rem;
-        }
-
-        .card-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 0.4rem;
-            margin-top: 0.75rem;
-            padding-top: 0.5rem;
-            border-top: 1px dashed var(--border-color);
-        }
-
-        .btn-icon {
-            background: transparent;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 0.35rem;
-            cursor: pointer;
-            color: var(--text-secondary);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.15s ease;
-        }
-
-        .btn-icon:hover {
-            color: var(--primary-color);
-            background: var(--bg-surface-hover, var(--light-bg));
-            border-color: var(--border-hover, #cbd5e1);
-        }
-
-        .btn-icon.delete:hover {
-            color: var(--danger-color);
-            border-color: var(--danger-border, #fecaca);
-            background: var(--danger-bg, #fef2f2);
-        }
-
-        .btn-add-slot {
+        .admin-form-group input[type="text"],
+        .admin-form-group input[type="date"],
+        .admin-form-group input[type="time"],
+        .admin-form-group input[type="number"],
+        .admin-form-group select,
+        .admin-form-group textarea {
             width: 100%;
-            margin-top: 0.75rem;
-            background: transparent;
-            border: 1px dashed var(--border-color);
-            color: var(--text-secondary);
-            padding: 0.6rem;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.4rem;
-            transition: all 0.2s ease;
+            height: 38px;
+            padding: 0 0.65rem;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.8125rem;
+            font-family: inherit;
+            box-sizing: border-box;
+            transition: border-color 0.15s ease;
         }
 
-        .btn-add-slot:hover {
-            background: var(--bg-surface, var(--white));
-            border-color: var(--primary-color);
-            color: var(--primary-color);
+        .admin-form-group textarea {
+            height: auto;
+            min-height: 70px;
+            padding: 0.5rem 0.65rem;
+            resize: vertical;
         }
 
-        .empty-slot-placeholder {
-            padding: 2rem 1rem;
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            border: 1px dashed var(--border-color);
-            border-radius: 8px;
-            margin-top: 0.5rem;
+        .admin-form-group input:focus,
+        .admin-form-group select:focus,
+        .admin-form-group textarea:focus {
+            outline: none;
+            border-color: var(--text-primary);
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="admin-header">
-            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                <h1>Admin Dashboard</h1>
-                <span class="badge" style="background: var(--primary-light, #e0e7ff); color: var(--primary-color, #4f46e5); font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 9999px; font-size: 0.8rem;">Schedule & Database Control</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                <button class="theme-toggle" id="themeToggle" type="button" title="Toggle dark mode" aria-label="Toggle dark mode" style="background: var(--light-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-primary);">
-                    <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        <!-- Header (Identical to Student Dashboard) -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
                     </svg>
-                    <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                    </svg>
-                </button>
-                <span style="font-size: 0.9rem; color: var(--text-secondary);">Logged in: <strong style="color: var(--text-primary);">{{ session.admin_username }}</strong></span>
-                <a href="/" class="btn-secondary" style="text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.4rem; color: var(--text-primary); border: 1px solid var(--border-color);">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                    Back to Dashboard
-                </a>
-                <a href="/admin/logout" style="margin-left: 0.5rem; color: var(--danger-color); text-decoration: none; font-weight: 600; font-size: 0.875rem;">Logout</a>
+                    <div>
+                        <h1>Weekly Study Scheduler</h1>
+                        <span class="header-badge" style="background: var(--bg-muted); color: var(--text-primary); border-color: var(--border-hover);">Admin &amp; Timetable Control</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <a href="/" class="btn-sm btn-secondary" title="View standard student dashboard">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        <span>Student View</span>
+                    </a>
+                    {% if is_authenticated %}
+                    <div class="user-auth-badge">
+                        <span class="user-email-pill" title="Logged in as {{ current_user_email }}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="user-icon">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                            <span class="user-email-text">{{ current_user_email }}</span>
+                        </span>
+                        <a href="{{ url_for('logout') }}" class="logout-btn" title="Sign out">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="logout-icon">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                <polyline points="16 17 21 12 16 7"></polyline>
+                                <line x1="21" y1="12" x2="9" y2="12"></line>
+                            </svg>
+                            <span>Logout</span>
+                        </a>
+                    </div>
+                    {% endif %}
+                    <button class="theme-toggle" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
+                        <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                        <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
-        </div>
-        
+        </header>
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ 'error' if category == 'error' else 'success' }}">
-                        {{ message }}
+                    <div class="panel-card" style="margin-bottom: 1rem; border-left: 4px solid {{ 'var(--danger-border)' if category == 'error' else '#10B981' }};">
+                        <span style="font-size: 0.8125rem; font-weight: 500;">{{ message }}</span>
                     </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
-        <!-- Navigation Tabs -->
-        <div class="admin-nav-tabs">
-            <button class="nav-tab active" data-tab="tab-schedule" type="button">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                Timetable & Rescheduler
-            </button>
-            <button class="nav-tab" data-tab="tab-history" type="button">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"></path><path d="M12 20V4"></path><path d="M6 20v-6"></path></svg>
-                Weekly History & Analytics
-            </button>
-            <button class="nav-tab" data-tab="tab-data" type="button">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
-                Sessions & Database Records
-            </button>
-        </div>
+        <!-- Navigation Menu -->
+        <nav class="primary-nav">
+            <div class="nav-menu-container">
+                <button type="button" class="nav-menu-btn active" data-tab="tab-schedule">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 15px; height: 15px;">
+                        <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span>Timetable &amp; Rescheduler</span>
+                </button>
+                <button type="button" class="nav-menu-btn" data-tab="tab-history">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 15px; height: 15px;">
+                        <path d="M18 20V10"></path>
+                        <path d="M12 20V4"></path>
+                        <path d="M6 20v-6"></path>
+                    </svg>
+                    <span>Weekly Analytics</span>
+                </button>
+                <button type="button" class="nav-menu-btn" data-tab="tab-data">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 15px; height: 15px;">
+                        <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+                    </svg>
+                    <span>Session Logs &amp; Database</span>
+                </button>
+            </div>
+        </nav>
 
-        <!-- TAB 1: Timetable & Rescheduler -->
-        <div id="tab-schedule" class="admin-tab-content active">
-            <div class="schedule-manager-panel">
-                <div class="schedule-toolbar">
+        <!-- ==================== TAB 1: TIMETABLE & RESCHEDULER ==================== -->
+        <div id="tab-schedule" class="admin-tab-pane">
+            <!-- Hero Toolbar -->
+            <div class="panel-card" style="margin-bottom: 1.25rem;">
+                <div class="admin-hero-toolbar">
                     <div>
-                        <h2>Weekly Timetable & Session Rescheduling</h2>
-                        <p>7 Courses &bull; 7 Days &bull; Dedicated Deep Study Block for Every Course</p>
+                        <h2>Weekly Timetable &amp; Rescheduling</h2>
+                        <p>7 Courses &bull; 7 Days &bull; Dedicated Deep Study Session for Every Course</p>
                     </div>
-                    <div class="schedule-actions">
-                        <button id="addBlockBtn" class="btn-primary" type="button" style="display: inline-flex; align-items: center; gap: 0.4rem;">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                            Add Session Block
+                    <div class="admin-toolbar-actions">
+                        <button id="addBlockBtn" class="btn-sm btn-secondary" type="button">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            <span>Add Block</span>
                         </button>
-                        <button id="resetScheduleBtn" class="btn-secondary" type="button" style="display: inline-flex; align-items: center; gap: 0.4rem; border: 1px solid var(--border-color);">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
-                            Reset to Default
+                        <button id="resetScheduleBtn" class="btn-sm btn-secondary" type="button">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                            <span>Reset Defaults</span>
                         </button>
-                        <button id="saveScheduleBtn" class="btn-success" type="button">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                            Save & Apply Schedule
+                        <button id="saveScheduleBtn" class="btn-sm btn-success-solid" type="button">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                            <span>Save &amp; Apply Schedule</span>
                         </button>
                     </div>
                 </div>
 
-                <div id="unsavedBanner" class="unsaved-banner">
-                    <span>You have unsaved schedule changes. Click <strong>"Save & Apply Schedule"</strong> to push updates to the live student dashboard.</span>
-                    <button class="btn-success" type="button" onclick="saveScheduleToServer()" style="padding: 0.35rem 0.85rem; font-size: 0.8rem;">Save Now</button>
+                <!-- Unsaved Changes Notice -->
+                <div id="unsavedBanner" class="unsaved-alert-banner">
+                    <span>You have unsaved schedule modifications. Click <strong>"Save &amp; Apply Schedule"</strong> to push them to the live dashboard.</span>
+                    <button class="btn-sm btn-success-solid" type="button" onclick="saveScheduleToServer()">Save Now</button>
                 </div>
 
-                <!-- Day Selector Bar -->
-                <div class="day-selector-bar" id="daySelectorBar">
-                    <!-- Populated dynamically via JS -->
-                </div>
-
-                <!-- 3-Column Daily Schedule Grid -->
-                <div class="schedule-columns-grid" id="scheduleColumnsContainer">
+                <!-- Secondary Day Pills Bar -->
+                <div class="day-pills-bar" id="daySelectorBar">
                     <!-- Populated dynamically via JS -->
                 </div>
             </div>
-        </div>
 
-        <!-- TAB 2: Weekly History & Analytics -->
-        <div id="tab-history" class="admin-tab-content">
-            <div class="history-header">
-                <h2>Weekly History</h2>
-                <div class="history-controls">
-                    <label for="historyWeekStart">
-                        Week
-                        <input id="historyWeekStart" type="date">
-                    </label>
-                    <button id="loadHistoryBtn" class="btn-primary" type="button">Load Week</button>
-                </div>
-            </div>
-            <div class="history-summary">
-                <div class="history-stat">
-                    <span>Academic Time</span>
-                    <strong id="academicHistoryTotal">0h</strong>
-                </div>
-                <div class="history-stat">
-                    <span>Free Task Time</span>
-                    <strong id="freeHistoryTotal">0h</strong>
-                </div>
-                <div class="history-stat">
-                    <span>Combined Time</span>
-                    <strong id="combinedHistoryTotal">0h</strong>
-                </div>
-            </div>
-            <div class="history-charts">
-                <div class="history-chart">
-                    <h3>Academic Time by Subject</h3>
-                    <canvas id="academicHistoryChart"></canvas>
-                </div>
-                <div class="history-chart">
-                    <h3>Free Task Time by Category</h3>
-                    <canvas id="freeHistoryChart"></canvas>
-                </div>
+            <!-- Daily Columns Grid -->
+            <div class="schedule-admin-grid" id="scheduleColumnsContainer">
+                <!-- Populated dynamically via JS -->
             </div>
         </div>
-    </div> <!-- End #tab-history -->
 
-    <!-- TAB 3: Sessions & Database Records -->
-    <div id="tab-data" class="admin-tab-content">
-        <div class="admin-actions" style="margin-bottom: 1.5rem;">
-            <button id="clearDbBtn" class="btn-danger" type="button">Clear All Database Data</button>
-            <button id="refreshBtn" class="btn-primary" type="button">Refresh Sessions</button>
-        </div>
+        <!-- ==================== TAB 2: WEEKLY ANALYTICS ==================== -->
+        <div id="tab-history" class="admin-tab-pane" style="display: none;">
+            <div class="panel-card" style="margin-bottom: 1.25rem;">
+                <div class="admin-subnav">
+                    <div>
+                        <h3 style="margin: 0; font-size: 1rem; font-weight: 700; color: var(--text-primary);">Weekly History &amp; Study Velocity</h3>
+                        <p style="margin: 0.2rem 0 0 0; font-size: 0.8125rem; color: var(--text-secondary);">Historical breakdown of academic hours and free tasks</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <label for="historyWeekStart" style="font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary);">Week:</label>
+                        <input id="historyWeekStart" type="date" style="height: 34px; padding: 0 0.5rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.8125rem;">
+                        <button id="loadHistoryBtn" class="btn-sm btn-secondary" type="button">Load Week</button>
+                    </div>
+                </div>
 
-        <div class="sessions-table">
-            <div class="table-toolbar">
-                <h2>Study Sessions</h2>
-                <div class="selection-actions">
-                    <span id="sessionsSelectedCount" class="selection-count">0 selected</span>
-                    <button id="deleteSelectedSessionsBtn" class="btn-danger bulk-delete-btn" type="button" disabled>Delete Selected</button>
+                <div class="admin-history-stats-grid">
+                    <div class="admin-stat-box">
+                        <span>Academic Time</span>
+                        <strong id="academicHistoryTotal">0h</strong>
+                    </div>
+                    <div class="admin-stat-box">
+                        <span>Free Task Time</span>
+                        <strong id="freeHistoryTotal">0h</strong>
+                    </div>
+                    <div class="admin-stat-box">
+                        <span>Combined Total</span>
+                        <strong id="combinedHistoryTotal">0h</strong>
+                    </div>
+                </div>
+
+                <div class="admin-charts-grid">
+                    <div class="panel-card" style="margin: 0;">
+                        <h4 style="margin: 0 0 1rem 0; font-size: 0.875rem; font-weight: 700; color: var(--text-primary);">Academic Time by Subject</h4>
+                        <canvas id="academicHistoryChart"></canvas>
+                    </div>
+                    <div class="panel-card" style="margin: 0;">
+                        <h4 style="margin: 0 0 1rem 0; font-size: 0.875rem; font-weight: 700; color: var(--text-primary);">Free Tasks by Category</h4>
+                        <canvas id="freeHistoryChart"></canvas>
+                    </div>
                 </div>
             </div>
-            <table id="sessionsTable">
-                <thead>
-                    <tr>
-                        <th class="select-col"><input id="selectAllSessions" class="select-all" type="checkbox" aria-label="Select all sessions"></th>
-                        <th>ID</th>
-                        <th>Subject</th>
-                        <th>Type</th>
-                        <th>Date</th>
-                        <th>Planned Start</th>
-                        <th>Duration</th>
-                        <th>Completed</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="sessionsBody">
-                    <tr>
-                        <td colspan="9" style="text-align: center; padding: 2rem;">Loading sessions...</td>
-                    </tr>
-                </tbody>
-            </table>
         </div>
 
-        <div class="tasks-table">
-            <div class="admin-task-card">
-                <h3>Add a Free Task</h3>
-                <form id="adminTaskForm" class="admin-task-form">
-                    <div class="form-group">
-                        <label for="adminTaskTitle">Title</label>
-                        <input type="text" id="adminTaskTitle" name="title" placeholder="Task title" required>
+        <!-- ==================== TAB 3: SESSION LOGS & DATABASE ==================== -->
+        <div id="tab-data" class="admin-tab-pane" style="display: none;">
+            <!-- Database Controls Bar -->
+            <div class="panel-card" style="margin-bottom: 1.25rem;">
+                <div class="admin-subnav">
+                    <div>
+                        <h3 style="margin: 0; font-size: 1rem; font-weight: 700; color: var(--text-primary);">Study Session Records</h3>
+                        <p style="margin: 0.2rem 0 0 0; font-size: 0.8125rem; color: var(--text-secondary);">Manage, review, and curate logged study sessions in MySQL</p>
                     </div>
-                    <div class="form-group">
-                        <label for="adminTaskTag">Tag</label>
-                        <input type="text" id="adminTaskTag" name="tag" placeholder="e.g. errands" required>
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <span id="sessionsSelectedCount" style="font-size: 0.8125rem; color: var(--text-muted); font-weight: 600;">0 selected</span>
+                        <button id="deleteSelectedSessionsBtn" class="btn-sm btn-danger-solid" type="button" disabled>Delete Selected</button>
+                        <button id="refreshBtn" class="btn-sm btn-secondary" type="button">Refresh Logs</button>
                     </div>
-                    <div class="form-group">
-                        <label for="adminTaskDay">Day</label>
-                        <select id="adminTaskDay" name="day" required>
-                            <option value="Monday">Monday</option>
-                            <option value="Tuesday">Tuesday</option>
-                            <option value="Wednesday">Wednesday</option>
-                            <option value="Thursday">Thursday</option>
-                            <option value="Friday">Friday</option>
-                            <option value="Saturday">Saturday</option>
-                            <option value="Sunday">Sunday</option>
-                        </select>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table class="admin-data-table" id="sessionsTable">
+                        <thead>
+                            <tr>
+                                <th class="select-checkbox-col"><input id="selectAllSessions" type="checkbox" aria-label="Select all sessions"></th>
+                                <th>ID</th>
+                                <th>Subject</th>
+                                <th>Type</th>
+                                <th>Date</th>
+                                <th>Planned Time</th>
+                                <th>Duration</th>
+                                <th>Completed</th>
+                                <th style="text-align: right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionsBody">
+                            <tr>
+                                <td colspan="9" style="text-align: center; padding: 2rem; color: var(--text-muted);">Loading sessions...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Free Tasks Table -->
+            <div class="panel-card" style="margin-bottom: 1.25rem;">
+                <div class="admin-subnav">
+                    <div>
+                        <h3 style="margin: 0; font-size: 1rem; font-weight: 700; color: var(--text-primary);">Free Time Tasks</h3>
+                        <p style="margin: 0.2rem 0 0 0; font-size: 0.8125rem; color: var(--text-secondary);">Add or manage non-lecture productive tasks for the week</p>
                     </div>
-                    <div class="form-group">
-                        <label for="adminTaskTime">Planned start</label>
-                        <input type="time" id="adminTaskTime" name="time" required>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span id="tasksSelectedCount" style="font-size: 0.8125rem; color: var(--text-muted); font-weight: 600;">0 selected</span>
+                        <button id="deleteSelectedTasksBtn" class="btn-sm btn-danger-solid" type="button" disabled>Delete Selected</button>
                     </div>
-                    <button type="submit">Add Free Task</button>
+                </div>
+
+                <!-- Add Task Inline Bar -->
+                <form id="adminTaskForm" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) auto; gap: 0.5rem; margin-bottom: 1rem; background: var(--bg-subtle); padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                    <input type="text" id="adminTaskTitle" placeholder="Task title" required style="height: 34px; padding: 0 0.5rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.8125rem;">
+                    <input type="text" id="adminTaskTag" placeholder="Tag (e.g. chores, reading)" required style="height: 34px; padding: 0 0.5rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.8125rem;">
+                    <select id="adminTaskDay" required style="height: 34px; padding: 0 0.5rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.8125rem;">
+                        <option value="Monday">Monday</option>
+                        <option value="Tuesday">Tuesday</option>
+                        <option value="Wednesday">Wednesday</option>
+                        <option value="Thursday">Thursday</option>
+                        <option value="Friday">Friday</option>
+                        <option value="Saturday">Saturday</option>
+                        <option value="Sunday">Sunday</option>
+                    </select>
+                    <input type="time" id="adminTaskTime" required style="height: 34px; padding: 0 0.5rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.8125rem;">
+                    <button type="submit" class="btn-sm btn-secondary" style="height: 34px;">Add Task</button>
                 </form>
-            </div>
-            <div class="table-toolbar">
-                <h2>Free Time Tasks</h2>
-                <div class="selection-actions">
-                    <span id="tasksSelectedCount" class="selection-count">0 selected</span>
-                    <button id="deleteSelectedTasksBtn" class="btn-danger bulk-delete-btn" type="button" disabled>Delete Selected</button>
+
+                <div style="overflow-x: auto;">
+                    <table class="admin-data-table" id="tasksTable">
+                        <thead>
+                            <tr>
+                                <th class="select-checkbox-col"><input id="selectAllTasks" type="checkbox" aria-label="Select all tasks"></th>
+                                <th>ID</th>
+                                <th>Title</th>
+                                <th>Tag</th>
+                                <th>Day</th>
+                                <th>Time</th>
+                                <th style="text-align: right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tasksBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">Loading tasks...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
-            <table id="tasksTable">
-                <thead>
-                    <tr>
-                        <th class="select-col"><input id="selectAllTasks" class="select-all" type="checkbox" aria-label="Select all tasks"></th>
-                        <th>ID</th>
-                        <th>Title</th>
-                        <th>Tag</th>
-                        <th>Day</th>
-                        <th>Time</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="tasksBody">
-                    <tr>
-                        <td colspan="7" style="text-align: center; padding: 2rem;">Loading tasks...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        </div> <!-- End #tab-data -->
-    </div>
-    
-    <!-- Edit Session Modal -->
-    <div id="editModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Edit Session</h3>
-                <button class="modal-close" onclick="closeModal()">&times;</button>
+
+            <!-- Advanced Operations -->
+            <div class="panel-card" style="border-left: 4px solid var(--danger-border);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h4 style="margin: 0; font-size: 0.875rem; font-weight: 700; color: var(--danger-text);">Danger Zone: Database Reset</h4>
+                        <p style="margin: 0.2rem 0 0 0; font-size: 0.775rem; color: var(--text-muted);">Permanently purge all study session records and test residue from the MySQL database.</p>
+                    </div>
+                    <button id="clearDbBtn" class="btn-sm btn-danger-solid" type="button">Clear All Database Records</button>
+                </div>
             </div>
-            <form id="editForm">
-                <input type="hidden" id="sessionId" name="sessionId">
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="subjectCode">Subject Code</label>
-                        <input type="text" id="subjectCode" name="subjectCode" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="sessionType">Session Type</label>
-                        <select id="sessionType" name="sessionType" required>
-                            <option value="class">Class</option>
-                            <option value="deep-study">Deep Study</option>
-                            <option value="revision">Revision</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="scheduledDate">Scheduled Date</label>
-                        <input type="date" id="scheduledDate" name="scheduledDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="scheduledTime">Scheduled Time</label>
-                        <input type="time" id="scheduledTime" name="scheduledTime" required>
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="durationMinutes">Duration (minutes)</label>
-                        <input type="number" id="durationMinutes" name="durationMinutes" min="1">
-                    </div>
-                    <div class="form-group checkbox-group">
-                        <input type="checkbox" id="completed" name="completed">
-                        <label for="completed">Completed</label>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="notes">Notes</label>
-                    <textarea id="notes" name="notes"></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="focusAreas">Focus Areas</label>
-                    <input type="text" id="focusAreas" name="focusAreas">
-                </div>
-                
-                <div class="modal-actions">
-                    <button type="button" onclick="closeModal()" class="btn-secondary">Cancel</button>
-                    <button type="submit" class="btn-primary">Save Changes</button>
-                </div>
-            </form>
         </div>
     </div>
-    
-    <!-- Schedule Block Modal (Add / Edit / Reschedule) -->
-    <div id="scheduleBlockModal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 620px;">
-            <div class="modal-header">
+
+    <!-- ==================== MODAL 1: ADD / EDIT / RESCHEDULE BLOCK ==================== -->
+    <div id="scheduleBlockModal" class="admin-modal-backdrop">
+        <div class="admin-modal-card">
+            <div class="admin-modal-header">
                 <h3 id="scheduleModalTitle">Add Session Block</h3>
-                <button class="modal-close" type="button" onclick="closeScheduleModal()">&times;</button>
+                <button type="button" class="action-icon-btn" onclick="closeScheduleModal()" aria-label="Close modal">&times;</button>
             </div>
             <form id="scheduleBlockForm" onsubmit="handleScheduleFormSubmit(event)">
-                <input type="hidden" id="blockMode" value="add">
-                <input type="hidden" id="origDay" value="">
-                <input type="hidden" id="origType" value="">
-                <input type="hidden" id="origIndex" value="-1">
+                <div class="admin-modal-body">
+                    <input type="hidden" id="blockMode" value="add">
+                    <input type="hidden" id="origDay" value="">
+                    <input type="hidden" id="origType" value="">
+                    <input type="hidden" id="origIndex" value="-1">
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="blockDay">Day of Week</label>
-                        <select id="blockDay" required>
-                            <option value="Monday">Monday</option>
-                            <option value="Tuesday">Tuesday</option>
-                            <option value="Wednesday">Wednesday</option>
-                            <option value="Thursday">Thursday</option>
-                            <option value="Friday">Friday</option>
-                            <option value="Saturday">Saturday</option>
-                            <option value="Sunday">Sunday</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="blockType">Block Category</label>
-                        <select id="blockType" required onchange="handleBlockTypeOrSubjectChange()">
-                            <option value="classes">Class (Lecture)</option>
-                            <option value="deep_study">Deep Study</option>
-                            <option value="revision">Revision</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="blockSubject">Course / Subject</label>
-                        <select id="blockSubject" required onchange="handleBlockTypeOrSubjectChange()">
-                            <option value="SMA300">SMA300 - Real Analysis I</option>
-                            <option value="SST305">SST305 - Theory of Estimation</option>
-                            <option value="SMA335">SMA335 - ODEs I</option>
-                            <option value="SMA330">SMA330 - Numerical Analysis I</option>
-                            <option value="SST304">SST304 - Multivariate Statistical Methods I</option>
-                            <option value="SST301">SST301 - Programming Language for Statistics I</option>
-                            <option value="SST101">SST101 - Intro to Probability & Stats (Retake)</option>
-                            <option value="CUSTOM">Custom / Other</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="blockTime">Time Range</label>
-                        <input type="text" id="blockTime" placeholder="e.g. 9:30am – 11:30am" required>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="blockTitle">Title</label>
-                        <input type="text" id="blockTitle" placeholder="e.g. SMA 300 Deep Study" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="blockColor">Color Accent</label>
-                        <div style="display: flex; gap: 0.5rem; align-items: center;">
-                            <input type="color" id="blockColorPicker" value="#3B82F6" style="width: 44px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; padding: 2px;" onchange="document.getElementById('blockColor').value = this.value">
-                            <input type="text" id="blockColor" value="#3B82F6" placeholder="#3B82F6" style="flex: 1;" required oninput="document.getElementById('blockColorPicker').value = this.value">
+                    <div class="form-grid-2">
+                        <div class="admin-form-group">
+                            <label for="blockDay">Day of Week</label>
+                            <select id="blockDay" required>
+                                <option value="Monday">Monday</option>
+                                <option value="Tuesday">Tuesday</option>
+                                <option value="Wednesday">Wednesday</option>
+                                <option value="Thursday">Thursday</option>
+                                <option value="Friday">Friday</option>
+                                <option value="Saturday">Saturday</option>
+                                <option value="Sunday">Sunday</option>
+                            </select>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="blockType">Category</label>
+                            <select id="blockType" required onchange="handleBlockTypeOrSubjectChange()">
+                                <option value="classes">Class (Lecture)</option>
+                                <option value="deep_study">Deep Study</option>
+                                <option value="revision">Revision</option>
+                            </select>
                         </div>
                     </div>
-                </div>
 
-                <div class="form-group" id="reasonGroup">
-                    <label for="blockReason">Pedagogical Rationale / Reason <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">(Key for Deep Study)</span></label>
-                    <textarea id="blockReason" rows="3" placeholder="Explain why this deep work block is placed here and what it accomplishes..."></textarea>
-                </div>
+                    <div class="form-grid-2">
+                        <div class="admin-form-group">
+                            <label for="blockSubject">Subject Code</label>
+                            <select id="blockSubject" required onchange="handleBlockTypeOrSubjectChange()">
+                                <option value="SMA300">SMA300 - Real Analysis I</option>
+                                <option value="SST305">SST305 - Theory of Estimation</option>
+                                <option value="SMA335">SMA335 - ODEs I</option>
+                                <option value="SMA330">SMA330 - Numerical Analysis I</option>
+                                <option value="SST304">SST304 - Multivariate Statistical Methods I</option>
+                                <option value="SST301">SST301 - Programming Language for Statistics I</option>
+                                <option value="SST101">SST101 - Intro to Probability &amp; Stats (Retake)</option>
+                                <option value="CUSTOM">Custom / General</option>
+                            </select>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="blockTime">Time Range</label>
+                            <input type="text" id="blockTime" placeholder="e.g. 9:30am – 11:30am" required>
+                        </div>
+                    </div>
 
-                <div class="form-group" id="focusGroup">
-                    <label for="blockFocus">Focus Points / Key Objectives <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">(One bullet point per line)</span></label>
-                    <textarea id="blockFocus" rows="3" placeholder="Derive MLE estimator&#10;Verify CRLB bound&#10;Redo proof from memory"></textarea>
-                </div>
+                    <div class="form-grid-2">
+                        <div class="admin-form-group">
+                            <label for="blockTitle">Title</label>
+                            <input type="text" id="blockTitle" placeholder="e.g. SMA 300 Deep Study" required>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="blockColor">Color Accent</label>
+                            <div style="display: flex; gap: 0.4rem; align-items: center;">
+                                <input type="color" id="blockColorPicker" value="#3B82F6" style="width: 38px; height: 38px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; padding: 2px; background: var(--bg-surface);" onchange="document.getElementById('blockColor').value = this.value">
+                                <input type="text" id="blockColor" value="#3B82F6" placeholder="#3B82F6" style="flex: 1;" required oninput="document.getElementById('blockColorPicker').value = this.value">
+                            </div>
+                        </div>
+                    </div>
 
-                <div class="modal-actions">
-                    <button type="button" onclick="closeScheduleModal()" class="btn-secondary">Cancel</button>
-                    <button type="submit" class="btn-primary">Apply to Timetable</button>
+                    <div class="admin-form-group" id="reasonGroup">
+                        <label for="blockReason">Pedagogical Rationale <span style="font-size: 0.725rem; color: var(--text-muted); font-weight: normal;">(Deep Study purpose)</span></label>
+                        <textarea id="blockReason" rows="2" placeholder="Why is this study block placed here and what theorem/proof does it master?"></textarea>
+                    </div>
+
+                    <div class="admin-form-group" id="focusGroup">
+                        <label for="blockFocus">Key Focus Bullet Points <span style="font-size: 0.725rem; color: var(--text-muted); font-weight: normal;">(One line per item)</span></label>
+                        <textarea id="blockFocus" rows="3" placeholder="Derive MLE estimator&#10;Verify CRLB bound&#10;Redo proof from memory"></textarea>
+                    </div>
+                </div>
+                <div class="admin-modal-footer">
+                    <button type="button" class="btn-sm btn-secondary" onclick="closeScheduleModal()">Cancel</button>
+                    <button type="submit" class="btn-sm btn-primary">Apply to Timetable</button>
                 </div>
             </form>
         </div>
     </div>
-    
+
+    <!-- ==================== MODAL 2: EDIT SESSION ==================== -->
+    <div id="editModal" class="admin-modal-backdrop">
+        <div class="admin-modal-card">
+            <div class="admin-modal-header">
+                <h3>Edit Session Record</h3>
+                <button type="button" class="action-icon-btn" onclick="closeModal()" aria-label="Close modal">&times;</button>
+            </div>
+            <form id="editForm">
+                <div class="admin-modal-body">
+                    <input type="hidden" id="sessionId" name="sessionId">
+
+                    <div class="form-grid-2">
+                        <div class="admin-form-group">
+                            <label for="subjectCode">Subject Code</label>
+                            <input type="text" id="subjectCode" name="subjectCode" required>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="sessionType">Session Type</label>
+                            <select id="sessionType" name="sessionType" required>
+                                <option value="class">Class</option>
+                                <option value="deep-study">Deep Study</option>
+                                <option value="revision">Revision</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="admin-form-group">
+                            <label for="scheduledDate">Scheduled Date</label>
+                            <input type="date" id="scheduledDate" name="scheduledDate" required>
+                        </div>
+                        <div class="admin-form-group">
+                            <label for="scheduledTime">Scheduled Time</label>
+                            <input type="time" id="scheduledTime" name="scheduledTime" required>
+                        </div>
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="admin-form-group">
+                            <label for="durationMinutes">Duration (minutes)</label>
+                            <input type="number" id="durationMinutes" name="durationMinutes" min="1">
+                        </div>
+                        <div class="admin-form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem;">
+                            <input type="checkbox" id="completed" name="completed" style="width: 18px; height: 18px; cursor: pointer;">
+                            <label for="completed" style="margin: 0; cursor: pointer;">Completed</label>
+                        </div>
+                    </div>
+
+                    <div class="admin-form-group">
+                        <label for="notes">Notes</label>
+                        <textarea id="notes" name="notes"></textarea>
+                    </div>
+
+                    <div class="admin-form-group">
+                        <label for="focusAreas">Focus Areas</label>
+                        <input type="text" id="focusAreas" name="focusAreas">
+                    </div>
+                </div>
+                <div class="admin-modal-footer">
+                    <button type="button" class="btn-sm btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn-sm btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript Controller -->
     <script>
         let sessions = [];
         let tasks = [];
@@ -1230,14 +990,13 @@
         let academicHistoryChart = null;
         let freeHistoryChart = null;
 
-        // Timetable Manager State
+        // Timetable State
         let adminSchedule = null;
         let adminSubjects = {};
         let activeScheduleDay = 'Monday';
         let isScheduleDirty = false;
         const SCHEDULE_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        
-        // Load admin data on page load
+
         document.addEventListener('DOMContentLoaded', () => {
             initAdminTabs();
             initThemeToggle();
@@ -1245,6 +1004,7 @@
             loadSessions();
             loadAdminTasks();
             initializeHistoryPanel();
+
             document.getElementById('selectAllSessions').addEventListener('change', toggleAllSessions);
             document.getElementById('selectAllTasks').addEventListener('change', toggleAllTasks);
             document.getElementById('deleteSelectedSessionsBtn').addEventListener('click', deleteSelectedSessions);
@@ -1264,614 +1024,41 @@
                 resetScheduleBtn.addEventListener('click', resetScheduleToDefault);
             }
         });
-        
-        // Clear database
-        document.getElementById('clearDbBtn').addEventListener('click', async () => {
-            if (!confirm('Are you sure you want to clear ALL database data? This action cannot be undone!')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/admin/clear-database', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    alert('Database cleared successfully!');
-                    loadSessions();
-                    loadAdminTasks();
-                } else {
-                    alert('Failed to clear database: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Error clearing database:', error);
-                alert('Error clearing database');
-            }
-        });
-        
-        // Refresh sessions and tasks
-        document.getElementById('refreshBtn').addEventListener('click', () => {
-            loadSessions();
-            loadAdminTasks();
-            loadWeeklyHistory();
-        });
 
-        function initializeHistoryPanel() {
-            const input = document.getElementById('historyWeekStart');
-            const today = new Date();
-            const monday = new Date(today);
-            const day = today.getDay();
-            const offset = day === 0 ? -6 : 1 - day;
-            monday.setDate(today.getDate() + offset);
-            input.value = monday.toISOString().slice(0, 10);
-            loadWeeklyHistory();
-        }
-
-        async function loadWeeklyHistory() {
-            const weekStart = document.getElementById('historyWeekStart').value;
-            try {
-                const response = await fetch(`/api/admin/history/weekly?week_start=${encodeURIComponent(weekStart)}`);
-                const result = await parseJsonResponse(response);
-                if (!result.success) {
-                    alert(result.error || 'Failed to load weekly history.');
-                    return;
-                }
-                renderWeeklyHistory(result.history);
-            } catch (error) {
-                console.error('Error loading weekly history:', error);
-                alert(error.message || 'Error loading weekly history');
-            }
-        }
-
-        function renderWeeklyHistory(history) {
-            const totals = history.totals || {};
-            document.getElementById('academicHistoryTotal').textContent = formatAdminHours(totals.academic_minutes || 0);
-            document.getElementById('freeHistoryTotal').textContent = formatAdminHours(totals.free_minutes || 0);
-            document.getElementById('combinedHistoryTotal').textContent = formatAdminHours(totals.combined_minutes || 0);
-
-            academicHistoryChart = renderHistoryChart(
-                academicHistoryChart,
-                'academicHistoryChart',
-                history.academic_by_subject || [],
-                '#4f46e5'
-            );
-            freeHistoryChart = renderHistoryChart(
-                freeHistoryChart,
-                'freeHistoryChart',
-                history.free_by_tag || [],
-                '#0f766e'
-            );
-        }
-
-        function renderHistoryChart(instance, canvasId, rows, color) {
-            const ctx = document.getElementById(canvasId);
-            if (!ctx) return instance;
-            if (instance) instance.destroy();
-
-            const labels = rows.length ? rows.map(row => row.label || 'Unknown') : ['No data'];
-            const values = rows.length ? rows.map(row => Number(((row.total_minutes || 0) / 60).toFixed(2))) : [0];
-
-            return new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels,
-                    datasets: [{
-                        data: values,
-                        backgroundColor: color,
-                        borderRadius: 8
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: context => `${context.parsed.y} hours`
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: value => `${value}h`
-                            }
-                        },
-                        x: {
-                            grid: { display: false }
-                        }
-                    }
-                }
-            });
-        }
-
-        function formatAdminHours(minutes) {
-            const total = Number(minutes || 0);
-            const hours = Math.floor(total / 60);
-            const mins = total % 60;
-            if (hours && mins) return `${hours}h ${mins}m`;
-            if (hours) return `${hours}h`;
-            return `${mins}m`;
-        }
-        
-        // Edit form submission
-        document.getElementById('editForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const formData = new FormData(e.target);
-            const sessionData = {
-                subject_code: formData.get('subjectCode'),
-                session_type: formData.get('sessionType'),
-                scheduled_date: formData.get('scheduledDate'),
-                scheduled_time: formData.get('scheduledTime'),
-                duration_minutes: formData.get('durationMinutes') ? parseInt(formData.get('durationMinutes')) : null,
-                completed: formData.get('completed') === 'on',
-                notes: formData.get('notes'),
-                focus_areas: formData.get('focusAreas')
-            };
-            
-            const sessionId = formData.get('sessionId');
-            
-            try {
-                const response = await fetch(`/api/admin/sessions/${sessionId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(sessionData)
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    alert('Session updated successfully!');
-                    closeModal();
-                    loadSessions();
-                } else {
-                    alert('Failed to update session: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Error updating session:', error);
-                alert('Error updating session');
-            }
-        });
-        
-        async function loadSessions() {
-            try {
-                const response = await fetch('/api/admin/sessions');
-                const result = await response.json();
-                
-                if (result.success) {
-                    sessions = result.sessions;
-                    selectedSessionIds.clear();
-                    renderSessions();
-                } else {
-                    alert('Failed to load sessions: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Error loading sessions:', error);
-                alert('Error loading sessions');
-            }
-        }
-        
-        function renderSessions() {
-            const tbody = document.getElementById('sessionsBody');
-            
-            if (sessions.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem;">No sessions found</td></tr>';
-                updateSessionSelectionUI();
-                return;
-            }
-            
-            tbody.innerHTML = sessions.map(session => `
-                <tr>
-                    <td class="select-col">
-                        <input class="row-select session-select" type="checkbox" value="${session.id}" ${selectedSessionIds.has(session.id) ? 'checked' : ''} aria-label="Select session ${session.id}">
-                    </td>
-                    <td>${session.id}</td>
-                    <td>${session.subject_code}</td>
-                    <td>${session.session_type}</td>
-                    <td>${session.scheduled_date}</td>
-                    <td>${session.scheduled_time}</td>
-                    <td>${session.duration_minutes || 'N/A'}</td>
-                    <td>${session.completed ? 'Yes' : 'No'}</td>
-                    <td class="session-actions">
-                        <button class="btn-edit" onclick="editSession(${session.id})">Edit</button>
-                        <button class="btn-delete" onclick="deleteSession(${session.id})">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-
-            document.querySelectorAll('.session-select').forEach(input => {
-                input.addEventListener('change', () => {
-                    const id = parseInt(input.value, 10);
-                    if (input.checked) {
-                        selectedSessionIds.add(id);
-                    } else {
-                        selectedSessionIds.delete(id);
-                    }
-                    updateSessionSelectionUI();
-                });
-            });
-            updateSessionSelectionUI();
-        }
-
-        function toggleAllSessions(event) {
-            selectedSessionIds.clear();
-            if (event.target.checked) {
-                sessions.forEach(session => selectedSessionIds.add(session.id));
-            }
-            document.querySelectorAll('.session-select').forEach(input => {
-                input.checked = event.target.checked;
-            });
-            updateSessionSelectionUI();
-        }
-
-        function updateSessionSelectionUI() {
-            const count = selectedSessionIds.size;
-            const countEl = document.getElementById('sessionsSelectedCount');
-            const deleteBtn = document.getElementById('deleteSelectedSessionsBtn');
-            const selectAll = document.getElementById('selectAllSessions');
-            if (countEl) countEl.textContent = `${count} selected`;
-            if (deleteBtn) deleteBtn.disabled = count === 0;
-            if (selectAll) {
-                selectAll.checked = sessions.length > 0 && count === sessions.length;
-                selectAll.indeterminate = count > 0 && count < sessions.length;
-            }
-        }
-
-        async function deleteSelectedSessions() {
-            const ids = Array.from(selectedSessionIds);
-            if (ids.length === 0) return;
-            if (!confirm(`Delete ${ids.length} selected session(s)? This cannot be undone.`)) {
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/admin/sessions/batch-delete', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ ids })
-                });
-                const result = await parseJsonResponse(response);
-                if (result.success) {
-                    alert(`Deleted ${result.deleted} session(s).`);
-                    selectedSessionIds.clear();
-                    loadSessions();
-                } else {
-                    alert('Failed to delete selected sessions: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Error deleting selected sessions:', error);
-                alert(error.message || 'Error deleting selected sessions');
-            }
-        }
-        
-        function editSession(sessionId) {
-            const session = sessions.find(s => s.id === sessionId);
-            if (!session) return;
-            
-            document.getElementById('sessionId').value = session.id;
-            document.getElementById('subjectCode').value = session.subject_code;
-            document.getElementById('sessionType').value = session.session_type;
-            document.getElementById('scheduledDate').value = session.scheduled_date;
-            document.getElementById('scheduledTime').value = session.scheduled_time;
-            document.getElementById('durationMinutes').value = session.duration_minutes || '';
-            document.getElementById('completed').checked = session.completed;
-            document.getElementById('notes').value = session.notes || '';
-            document.getElementById('focusAreas').value = session.focus_areas || '';
-            
-            document.getElementById('editModal').style.display = 'block';
-        }
-        
-        async function deleteSession(sessionId) {
-            if (!confirm('Are you sure you want to delete this session?')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch(`/api/admin/sessions/${sessionId}`, {
-                    method: 'DELETE'
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    alert('Session deleted successfully!');
-                    loadSessions();
-                } else {
-                    alert('Failed to delete session: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Error deleting session:', error);
-                alert('Error deleting session');
-            }
-        }
-        
-        async function loadAdminTasks() {
-            try {
-                const response = await fetch('/api/admin/tasks');
-                const result = await response.json();
-
-                if (result.success) {
-                    tasks = result.tasks;
-                    selectedTaskIds.clear();
-                    renderTasks();
-                } else {
-                    alert('Failed to load tasks: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Error loading tasks:', error);
-                alert('Error loading tasks');
-            }
-        }
-
-        document.getElementById('adminTaskForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const title = document.getElementById('adminTaskTitle').value.trim();
-            const tag = document.getElementById('adminTaskTag').value.trim();
-            const day = document.getElementById('adminTaskDay').value;
-            const time = document.getElementById('adminTaskTime').value;
-
-            if (!title || !tag || !day || !time) {
-                alert('Please fill in all task fields.');
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/tasks', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ title, tag, day, time })
-                });
-                const result = await response.json();
-                if (response.ok && result.success) {
-                    document.getElementById('adminTaskForm').reset();
-                    loadAdminTasks();
-                    alert('Free task added successfully.');
-                } else {
-                    alert(result.error || 'Unable to add task.');
-                }
-            } catch (error) {
-                console.error('Error adding admin task:', error);
-                alert('Error adding task.');
-            }
-        });
-
-        function renderTasks() {
-            const tbody = document.getElementById('tasksBody');
-
-            if (tasks.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">No tasks found</td></tr>';
-                updateTaskSelectionUI();
-                return;
-            }
-
-            tbody.innerHTML = tasks.map(task => {
-                if (editingTaskId === task.id) {
-                    return `
-                        <tr class="task-edit-row">
-                            <td class="select-col"></td>
-                            <td>${task.id}</td>
-                            <td><input id="editTaskTitle_${task.id}" type="text" value="${task.title.replace(/"/g, '&quot;')}" /></td>
-                            <td><input id="editTaskTag_${task.id}" type="text" value="${task.tag.replace(/"/g, '&quot;')}" /></td>
-                            <td>${renderTaskDayOptions(task.day, task.id)}</td>
-                            <td><input id="editTaskTime_${task.id}" type="time" value="${task.time}" /></td>
-                            <td class="task-row-actions">
-                                <button class="btn-primary" onclick="saveTaskEdit(${task.id})">Save</button>
-                                <button class="btn-secondary" onclick="cancelTaskEdit()">Cancel</button>
-                            </td>
-                        </tr>
-                    `;
-                }
-                return `
-                    <tr>
-                        <td class="select-col">
-                            <input class="row-select task-select" type="checkbox" value="${task.id}" ${selectedTaskIds.has(task.id) ? 'checked' : ''} aria-label="Select task ${task.id}">
-                        </td>
-                        <td>${task.id}</td>
-                        <td>${task.title}</td>
-                        <td>${task.tag}</td>
-                        <td>${task.day}</td>
-                        <td>${task.time}</td>
-                        <td class="session-actions">
-                            <button class="btn-edit" onclick="startTaskEdit(${task.id})">Edit</button>
-                            <button class="btn-delete" onclick="deleteTask(${task.id})">Delete</button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-
-            document.querySelectorAll('.task-select').forEach(input => {
-                input.addEventListener('change', () => {
-                    const id = parseInt(input.value, 10);
-                    if (input.checked) {
-                        selectedTaskIds.add(id);
-                    } else {
-                        selectedTaskIds.delete(id);
-                    }
-                    updateTaskSelectionUI();
-                });
-            });
-            updateTaskSelectionUI();
-        }
-
-        function toggleAllTasks(event) {
-            selectedTaskIds.clear();
-            if (event.target.checked) {
-                tasks.forEach(task => selectedTaskIds.add(task.id));
-            }
-            document.querySelectorAll('.task-select').forEach(input => {
-                input.checked = event.target.checked;
-            });
-            updateTaskSelectionUI();
-        }
-
-        function updateTaskSelectionUI() {
-            const count = selectedTaskIds.size;
-            const countEl = document.getElementById('tasksSelectedCount');
-            const deleteBtn = document.getElementById('deleteSelectedTasksBtn');
-            const selectAll = document.getElementById('selectAllTasks');
-            if (countEl) countEl.textContent = `${count} selected`;
-            if (deleteBtn) deleteBtn.disabled = count === 0;
-            if (selectAll) {
-                selectAll.checked = tasks.length > 0 && count === tasks.length;
-                selectAll.indeterminate = count > 0 && count < tasks.length;
-            }
-        }
-
-        async function deleteSelectedTasks() {
-            const ids = Array.from(selectedTaskIds);
-            if (ids.length === 0) return;
-            if (!confirm(`Delete ${ids.length} selected free task(s)? This cannot be undone.`)) {
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/admin/tasks/batch-delete', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ ids })
-                });
-                const result = await parseJsonResponse(response);
-                if (result.success) {
-                    alert(`Deleted ${result.deleted} free task(s).`);
-                    selectedTaskIds.clear();
-                    loadAdminTasks();
-                } else {
-                    alert('Failed to delete selected tasks: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Error deleting selected tasks:', error);
-                alert(error.message || 'Error deleting selected tasks');
-            }
-        }
-
-        async function parseJsonResponse(response) {
-            const contentType = response.headers.get('content-type') || '';
-            if (contentType.includes('application/json')) {
-                return response.json();
-            }
-
-            const text = await response.text();
-            throw new Error(`Request failed with HTTP ${response.status}. ${text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}`);
-        }
-
-        function renderTaskDayOptions(selectedDay, taskId) {
-            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-            return `
-                <select id="editTaskDay_${taskId}">
-                    ${days.map(day => `<option value="${day}" ${day === selectedDay ? 'selected' : ''}>${day}</option>`).join('')}
-                </select>
-            `;
-        }
-
-        function startTaskEdit(taskId) {
-            editingTaskId = taskId;
-            renderTasks();
-        }
-
-        function cancelTaskEdit() {
-            editingTaskId = null;
-            renderTasks();
-        }
-
-        async function saveTaskEdit(taskId) {
-            const title = document.getElementById(`editTaskTitle_${taskId}`).value.trim();
-            const tag = document.getElementById(`editTaskTag_${taskId}`).value.trim();
-            const day = document.getElementById(`editTaskDay_${taskId}`).value;
-            const time = document.getElementById(`editTaskTime_${taskId}`).value;
-
-            if (!title || !tag || !day || !time) {
-                alert('Please complete all fields before saving.');
-                return;
-            }
-
-            try {
-                const response = await fetch(`/api/admin/tasks/${taskId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ title, tag, day, time })
-                });
-                const result = await response.json();
-                if (result.success) {
-                    editingTaskId = null;
-                    await loadAdminTasks();
-                } else {
-                    alert('Failed to save task: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Error saving task:', error);
-                alert('Error saving task');
-            }
-        }
-
-        async function deleteTask(taskId) {
-            if (!confirm('Are you sure you want to delete this task?')) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`/api/admin/tasks/${taskId}`, {
-                    method: 'DELETE'
-                });
-                const result = await response.json();
-                if (result.success) {
-                    alert('Task deleted successfully!');
-                    loadAdminTasks();
-                } else {
-                    alert('Failed to delete task: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Error deleting task:', error);
-                alert('Error deleting task');
-            }
-        }
-
-        // Timetable Management Functions
+        // ==================== TABS & THEME ====================
         function initAdminTabs() {
-            document.querySelectorAll('.nav-tab').forEach(tabBtn => {
-                tabBtn.addEventListener('click', () => {
-                    document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
-                    document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
-                    tabBtn.classList.add('active');
-                    const targetId = tabBtn.getAttribute('data-tab');
+            document.querySelectorAll('.primary-nav .nav-menu-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.primary-nav .nav-menu-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.admin-tab-pane').forEach(p => p.style.display = 'none');
+
+                    btn.classList.add('active');
+                    const targetId = btn.getAttribute('data-tab');
                     const target = document.getElementById(targetId);
                     if (target) {
-                        target.classList.add('active');
+                        target.style.display = 'block';
                     }
                 });
             });
         }
 
         function initThemeToggle() {
-            const themeToggle = document.getElementById('themeToggle');
-            if (themeToggle) {
-                themeToggle.addEventListener('click', () => {
-                    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                    document.documentElement.setAttribute('data-theme', newTheme);
-                    localStorage.setItem('theme', newTheme);
+            const toggle = document.getElementById('themeToggle');
+            if (toggle) {
+                toggle.addEventListener('click', () => {
+                    const cur = document.documentElement.getAttribute('data-theme') || 'light';
+                    const next = cur === 'dark' ? 'light' : 'dark';
+                    document.documentElement.setAttribute('data-theme', next);
+                    localStorage.setItem('theme', next);
                 });
             }
         }
 
+        // ==================== TIMETABLE MANAGER ====================
         async function loadAdminSchedule() {
             const container = document.getElementById('scheduleColumnsContainer');
             if (container) {
-                container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-muted);">Loading timetable schedule...</div>';
+                container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem; color: var(--text-muted); font-size: 0.875rem;">Loading timetable schedule...</div>';
             }
             try {
                 const res = await fetch('/api/admin/schedule');
@@ -1895,30 +1082,27 @@
 
             let html = '';
             SCHEDULE_DAYS.forEach(day => {
-                const dayData = adminSchedule[day] || {};
-                const count = (dayData.classes || []).length + (dayData.deep_study || []).length + (dayData.revision || []).length;
-                const activeClass = activeScheduleDay === day ? 'active' : '';
+                const d = adminSchedule[day] || {};
+                const count = (d.classes || []).length + (d.deep_study || []).length + (d.revision || []).length;
+                const active = activeScheduleDay === day ? 'active' : '';
                 html += `
-                    <button class="day-pill ${activeClass}" type="button" onclick="selectScheduleDay('${day}')">
-                        <span>${day}</span>
-                        <span class="count-badge">${count}</span>
+                    <button class="day-pill-btn ${active}" type="button" onclick="selectScheduleDay('${day}')">
+                        ${day} (${count})
                     </button>
                 `;
             });
 
-            let totalWeekSlots = 0;
+            let total = 0;
             SCHEDULE_DAYS.forEach(d => {
-                const dd = adminSchedule[d] || {};
-                totalWeekSlots += (dd.classes || []).length + (dd.deep_study || []).length + (dd.revision || []).length;
+                const dayObj = adminSchedule[d] || {};
+                total += (dayObj.classes || []).length + (dayObj.deep_study || []).length + (dayObj.revision || []).length;
             });
             const allActive = activeScheduleDay === 'All' ? 'active' : '';
             html += `
-                <button class="day-pill ${allActive}" type="button" onclick="selectScheduleDay('All')">
-                    <span>All 7 Days</span>
-                    <span class="count-badge">${totalWeekSlots}</span>
+                <button class="day-pill-btn ${allActive}" type="button" onclick="selectScheduleDay('All')">
+                    All 7 Days (${total})
                 </button>
             `;
-
             bar.innerHTML = html;
         }
 
@@ -1944,56 +1128,56 @@
 
             container.innerHTML = `
                 <!-- Classes Column -->
-                <div class="schedule-col">
-                    <div class="schedule-col-header">
-                        <h3>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-                            Classes (Lectures)
-                        </h3>
-                        <span class="badge">${classesList.length}</span>
+                <div class="schedule-admin-col">
+                    <div class="col-header-row">
+                        <div class="col-header-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                            <span>Classes &amp; Lectures</span>
+                        </div>
+                        <span class="col-badge">${classesList.length}</span>
                     </div>
-                    <div class="schedule-cards-list">
-                        ${classesList.length === 0 ? '<div class="empty-slot-placeholder">No lecture classes scheduled for this day</div>' : classesList.map((item, idx) => renderScheduleCard(activeScheduleDay, 'classes', item, idx)).join('')}
+                    <div class="col-cards-feed">
+                        ${classesList.length === 0 ? '<div class="empty-col-state">No lecture classes scheduled</div>' : classesList.map((item, idx) => renderSlotCard(activeScheduleDay, 'classes', item, idx)).join('')}
                     </div>
-                    <button class="btn-add-slot" type="button" onclick="openAddBlockModal('${activeScheduleDay}', 'classes')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                        Add Class
+                    <button class="btn-add-col-slot" type="button" onclick="openAddBlockModal('${activeScheduleDay}', 'classes')">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        <span>Add Class</span>
                     </button>
                 </div>
 
                 <!-- Deep Study Column -->
-                <div class="schedule-col">
-                    <div class="schedule-col-header">
-                        <h3>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                            Deep Study Sessions
-                        </h3>
-                        <span class="badge" style="background: var(--primary-light, #e0e7ff); color: var(--primary-color, #4f46e5);">${deepStudyList.length}</span>
+                <div class="schedule-admin-col">
+                    <div class="col-header-row">
+                        <div class="col-header-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                            <span>Deep Study Sessions</span>
+                        </div>
+                        <span class="col-badge" style="background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-border);">${deepStudyList.length}</span>
                     </div>
-                    <div class="schedule-cards-list">
-                        ${deepStudyList.length === 0 ? '<div class="empty-slot-placeholder">No deep study block scheduled for this day</div>' : deepStudyList.map((item, idx) => renderScheduleCard(activeScheduleDay, 'deep_study', item, idx)).join('')}
+                    <div class="col-cards-feed">
+                        ${deepStudyList.length === 0 ? '<div class="empty-col-state">No deep study scheduled</div>' : deepStudyList.map((item, idx) => renderSlotCard(activeScheduleDay, 'deep_study', item, idx)).join('')}
                     </div>
-                    <button class="btn-add-slot" type="button" onclick="openAddBlockModal('${activeScheduleDay}', 'deep_study')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                        Add Deep Study Block
+                    <button class="btn-add-col-slot" type="button" onclick="openAddBlockModal('${activeScheduleDay}', 'deep_study')">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        <span>Add Deep Study</span>
                     </button>
                 </div>
 
-                <!-- Revision Column -->
-                <div class="schedule-col">
-                    <div class="schedule-col-header">
-                        <h3>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-                            Revisions
-                        </h3>
-                        <span class="badge">${revisionList.length}</span>
+                <!-- Revisions Column -->
+                <div class="schedule-admin-col">
+                    <div class="col-header-row">
+                        <div class="col-header-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                            <span>Revisions</span>
+                        </div>
+                        <span class="col-badge" style="background: var(--success-bg); color: var(--success-text); border-color: var(--success-border);">${revisionList.length}</span>
                     </div>
-                    <div class="schedule-cards-list">
-                        ${revisionList.length === 0 ? '<div class="empty-slot-placeholder">No revision scheduled for this day</div>' : revisionList.map((item, idx) => renderScheduleCard(activeScheduleDay, 'revision', item, idx)).join('')}
+                    <div class="col-cards-feed">
+                        ${revisionList.length === 0 ? '<div class="empty-col-state">No revision scheduled</div>' : revisionList.map((item, idx) => renderSlotCard(activeScheduleDay, 'revision', item, idx)).join('')}
                     </div>
-                    <button class="btn-add-slot" type="button" onclick="openAddBlockModal('${activeScheduleDay}', 'revision')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                        Add Revision
+                    <button class="btn-add-col-slot" type="button" onclick="openAddBlockModal('${activeScheduleDay}', 'revision')">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        <span>Add Revision</span>
                     </button>
                 </div>
             `;
@@ -2002,31 +1186,26 @@
         function renderAllDaysGrid(container) {
             let html = '';
             SCHEDULE_DAYS.forEach(day => {
-                const dayData = adminSchedule[day] || { classes: [], deep_study: [], revision: [] };
-                const total = (dayData.classes || []).length + (dayData.deep_study || []).length + (dayData.revision || []).length;
+                const d = adminSchedule[day] || { classes: [], deep_study: [], revision: [] };
+                const total = (d.classes || []).length + (d.deep_study || []).length + (d.revision || []).length;
                 html += `
-                    <div class="schedule-col" style="grid-column: 1 / -1; margin-bottom: 1.5rem; background: var(--bg-surface, var(--white));">
-                        <div class="schedule-col-header" style="background: var(--bg-subtle, #f8fafc); padding: 0.75rem 1rem; border-radius: 8px;">
-                            <h3 style="font-size: 1.1rem; color: var(--primary-color);">
-                                ${day}
-                            </h3>
-                            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                <span class="badge">${total} slots</span>
-                                <button class="btn-secondary" style="padding: 0.3rem 0.65rem; font-size: 0.8rem; border: 1px solid var(--border-color); border-radius: 6px;" onclick="selectScheduleDay('${day}')">Focus Day</button>
-                            </div>
+                    <div class="panel-card" style="grid-column: 1 / -1; margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+                            <h3 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">${day} (${total} items)</h3>
+                            <button class="btn-sm btn-secondary" type="button" onclick="selectScheduleDay('${day}')">Focus Day</button>
                         </div>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; padding: 1rem 0;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.75rem;">
                             <div>
-                                <h4 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Classes (${(dayData.classes || []).length})</h4>
-                                ${(dayData.classes || []).map((item, idx) => renderScheduleCard(day, 'classes', item, idx)).join('')}
+                                <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.4rem;">Classes (${(d.classes || []).length})</div>
+                                ${(d.classes || []).map((item, idx) => renderSlotCard(day, 'classes', item, idx)).join('')}
                             </div>
                             <div>
-                                <h4 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Deep Study (${(dayData.deep_study || []).length})</h4>
-                                ${(dayData.deep_study || []).map((item, idx) => renderScheduleCard(day, 'deep_study', item, idx)).join('')}
+                                <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.4rem;">Deep Study (${(d.deep_study || []).length})</div>
+                                ${(d.deep_study || []).map((item, idx) => renderSlotCard(day, 'deep_study', item, idx)).join('')}
                             </div>
                             <div>
-                                <h4 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Revisions (${(dayData.revision || []).length})</h4>
-                                ${(dayData.revision || []).map((item, idx) => renderScheduleCard(day, 'revision', item, idx)).join('')}
+                                <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.4rem;">Revisions (${(d.revision || []).length})</div>
+                                ${(d.revision || []).map((item, idx) => renderSlotCard(day, 'revision', item, idx)).join('')}
                             </div>
                         </div>
                     </div>
@@ -2035,37 +1214,36 @@
             container.innerHTML = html;
         }
 
-        function renderScheduleCard(day, type, item, index) {
+        function renderSlotCard(day, type, item, index) {
             const color = item.color || '#3B82F6';
-            const focusItems = item.focus && Array.isArray(item.focus) ? item.focus : [];
-            
+            const focus = Array.isArray(item.focus) ? item.focus : [];
             return `
-                <div class="schedule-card" style="border-left-color: ${color};">
-                    <div class="schedule-card-top">
-                        <span class="subject-badge" style="background: ${color}20; color: ${color}; border: 1px solid ${color}40;">
+                <div class="admin-slot-card" style="border-left-color: ${color};">
+                    <div class="slot-top-row">
+                        <span class="slot-subject-badge" style="background: ${color}15; color: ${color}; border: 1px solid ${color}35;">
                             ${item.subject || 'GENERAL'}
                         </span>
-                        <span class="time-badge">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        <span class="slot-time-text">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                             ${item.time || ''}
                         </span>
                     </div>
-                    <div class="card-title">${item.title || ''}</div>
-                    ${item.reason ? `<div class="card-reason">${item.reason}</div>` : ''}
-                    ${focusItems.length > 0 ? `
-                        <ul class="card-focus-list">
-                            ${focusItems.map(f => `<li>${f}</li>`).join('')}
+                    <div class="slot-title">${item.title || ''}</div>
+                    ${item.reason ? `<div class="slot-reason-box">${item.reason}</div>` : ''}
+                    ${focus.length > 0 ? `
+                        <ul class="slot-focus-ul">
+                            ${focus.map(f => `<li>${f}</li>`).join('')}
                         </ul>
                     ` : ''}
-                    <div class="card-actions">
-                        <button class="btn-icon" type="button" title="Reschedule / Change Day" onclick="rescheduleBlockQuick('${day}', '${type}', ${index})">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                    <div class="slot-actions-row">
+                        <button class="action-icon-btn" type="button" title="Reschedule to another day" onclick="rescheduleBlockQuick('${day}', '${type}', ${index})">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
                         </button>
-                        <button class="btn-icon" type="button" title="Edit Session Block" onclick="openEditBlockModal('${day}', '${type}', ${index})">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                        <button class="action-icon-btn" type="button" title="Edit block" onclick="openEditBlockModal('${day}', '${type}', ${index})">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                         </button>
-                        <button class="btn-icon delete" type="button" title="Delete Block" onclick="deleteScheduleBlock('${day}', '${type}', ${index})">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        <button class="action-icon-btn delete" type="button" title="Delete block" onclick="deleteScheduleBlock('${day}', '${type}', ${index})">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                         </button>
                     </div>
                 </div>
@@ -2088,7 +1266,7 @@
             document.getElementById('blockFocus').value = '';
 
             handleBlockTypeOrSubjectChange();
-            document.getElementById('scheduleBlockModal').style.display = 'block';
+            document.getElementById('scheduleBlockModal').classList.add('open');
         }
 
         function openEditBlockModal(day, type, index) {
@@ -2104,16 +1282,16 @@
 
             document.getElementById('blockDay').value = day;
             document.getElementById('blockType').value = type;
-            
-            const subjSelect = document.getElementById('blockSubject');
-            let hasSubj = false;
-            for (let opt of subjSelect.options) {
+
+            const selectEl = document.getElementById('blockSubject');
+            let found = false;
+            for (let opt of selectEl.options) {
                 if (opt.value === item.subject) {
-                    hasSubj = true;
+                    found = true;
                     break;
                 }
             }
-            subjSelect.value = hasSubj ? item.subject : 'CUSTOM';
+            selectEl.value = found ? item.subject : 'CUSTOM';
 
             document.getElementById('blockTime').value = item.time || '';
             document.getElementById('blockTitle').value = item.title || '';
@@ -2122,11 +1300,11 @@
             document.getElementById('blockReason').value = item.reason || '';
             document.getElementById('blockFocus').value = (item.focus || []).join('\n');
 
-            document.getElementById('scheduleBlockModal').style.display = 'block';
+            document.getElementById('scheduleBlockModal').classList.add('open');
         }
 
         function closeScheduleModal() {
-            document.getElementById('scheduleBlockModal').style.display = 'none';
+            document.getElementById('scheduleBlockModal').classList.remove('open');
         }
 
         function handleBlockTypeOrSubjectChange() {
@@ -2165,7 +1343,7 @@
 
             const newDay = document.getElementById('blockDay').value;
             const newType = document.getElementById('blockType').value;
-            let subject = document.getElementById('blockSubject').value;
+            const subject = document.getElementById('blockSubject').value;
             const time = document.getElementById('blockTime').value.trim();
             const title = document.getElementById('blockTitle').value.trim();
             const color = document.getElementById('blockColor').value.trim();
@@ -2179,12 +1357,8 @@
                 title,
                 color: color || '#3B82F6'
             };
-            if (reason) {
-                block.reason = reason;
-            }
-            if (focus.length > 0) {
-                block.focus = focus;
-            }
+            if (reason) block.reason = reason;
+            if (focus.length > 0) block.focus = focus;
 
             if (!adminSchedule[newDay]) adminSchedule[newDay] = {};
             if (!adminSchedule[newDay][newType]) adminSchedule[newDay][newType] = [];
@@ -2203,9 +1377,7 @@
         }
 
         function deleteScheduleBlock(day, type, index) {
-            if (!confirm('Are you sure you want to remove this session block from the timetable?')) {
-                return;
-            }
+            if (!confirm('Remove this block from the schedule?')) return;
             if (adminSchedule[day] && adminSchedule[day][type]) {
                 adminSchedule[day][type].splice(index, 1);
                 markScheduleDirty();
@@ -2218,28 +1390,26 @@
             const item = adminSchedule[day] && adminSchedule[day][type] && adminSchedule[day][type][index];
             if (!item) return;
 
-            const daysList = SCHEDULE_DAYS.join(', ');
-            const targetDay = prompt(`Move "${item.title}" to which day? (${daysList})`, day);
+            const targetDay = prompt(`Move "${item.title}" to which day? (${SCHEDULE_DAYS.join(', ')})`, day);
             if (!targetDay) return;
 
-            const matchedDay = SCHEDULE_DAYS.find(d => d.toLowerCase() === targetDay.trim().toLowerCase());
-            if (!matchedDay) {
-                alert('Invalid day entered. Please enter one of: ' + daysList);
+            const matched = SCHEDULE_DAYS.find(d => d.toLowerCase() === targetDay.trim().toLowerCase());
+            if (!matched) {
+                alert('Invalid day entered. Please choose Monday through Sunday.');
                 return;
             }
 
-            const newTime = prompt(`Time for "${item.title}" on ${matchedDay}:`, item.time || '');
+            const newTime = prompt(`Scheduled time on ${matched}:`, item.time || '');
             if (newTime === null) return;
 
             adminSchedule[day][type].splice(index, 1);
-            
-            const updatedItem = { ...item, time: newTime.trim() || item.time };
-            if (!adminSchedule[matchedDay]) adminSchedule[matchedDay] = {};
-            if (!adminSchedule[matchedDay][type]) adminSchedule[matchedDay][type] = [];
-            adminSchedule[matchedDay][type].push(updatedItem);
+            const updated = { ...item, time: newTime.trim() || item.time };
+            if (!adminSchedule[matched]) adminSchedule[matched] = {};
+            if (!adminSchedule[matched][type]) adminSchedule[matched][type] = [];
+            adminSchedule[matched][type].push(updated);
 
             markScheduleDirty();
-            activeScheduleDay = matchedDay;
+            activeScheduleDay = matched;
             renderDaySelectorBar();
             renderScheduleGrid();
         }
@@ -2249,7 +1419,7 @@
             const banner = document.getElementById('unsavedBanner');
             if (banner) banner.classList.add('visible');
             const saveBtn = document.getElementById('saveScheduleBtn');
-            if (saveBtn) saveBtn.classList.add('pulse');
+            if (saveBtn) saveBtn.classList.add('btn-pulse');
         }
 
         async function saveScheduleToServer() {
@@ -2258,7 +1428,7 @@
             const origText = saveBtn ? saveBtn.innerHTML : '';
             if (saveBtn) {
                 saveBtn.disabled = true;
-                saveBtn.innerHTML = 'Saving...';
+                saveBtn.innerHTML = '<span>Saving...</span>';
             }
 
             try {
@@ -2272,14 +1442,14 @@
                     isScheduleDirty = false;
                     const banner = document.getElementById('unsavedBanner');
                     if (banner) banner.classList.remove('visible');
-                    if (saveBtn) saveBtn.classList.remove('pulse');
-                    alert('Schedule successfully saved and applied to live timetable!');
+                    if (saveBtn) saveBtn.classList.remove('btn-pulse');
+                    alert('Schedule saved and applied live to student dashboard!');
                 } else {
                     alert('Failed to save schedule: ' + (result.error || 'Unknown error'));
                 }
             } catch (err) {
                 console.error('Error saving schedule:', err);
-                alert('Error saving schedule to server');
+                alert('Error saving schedule');
             } finally {
                 if (saveBtn) {
                     saveBtn.disabled = false;
@@ -2289,10 +1459,7 @@
         }
 
         async function resetScheduleToDefault() {
-            if (!confirm('Are you sure you want to revert all timetable modifications to the default canonical 7-course balanced schedule? Any custom edits will be replaced.')) {
-                return;
-            }
-
+            if (!confirm('Revert all schedule edits to the canonical 7-course balanced timetable?')) return;
             try {
                 const res = await fetch('/api/admin/schedule/reset', {
                     method: 'POST',
@@ -2305,10 +1472,10 @@
                     const banner = document.getElementById('unsavedBanner');
                     if (banner) banner.classList.remove('visible');
                     const saveBtn = document.getElementById('saveScheduleBtn');
-                    if (saveBtn) saveBtn.classList.remove('pulse');
+                    if (saveBtn) saveBtn.classList.remove('btn-pulse');
                     renderDaySelectorBar();
                     renderScheduleGrid();
-                    alert('Timetable reset to the canonical 7-course balanced schedule.');
+                    alert('Schedule reset to default 7-course balanced layout.');
                 } else {
                     alert('Failed to reset schedule: ' + (result.error || 'Unknown error'));
                 }
@@ -2318,20 +1485,454 @@
             }
         }
 
-        function closeModal() {
-            document.getElementById('editModal').style.display = 'none';
+        // ==================== SESSIONS & TASKS ====================
+        async function loadSessions() {
+            try {
+                const res = await fetch('/api/admin/sessions');
+                const result = await res.json();
+                if (result.success) {
+                    sessions = result.sessions;
+                    selectedSessionIds.clear();
+                    renderSessions();
+                }
+            } catch (err) {
+                console.error('Error loading sessions:', err);
+            }
         }
 
-        // Close modal when clicking outside
+        function renderSessions() {
+            const tbody = document.getElementById('sessionsBody');
+            if (!tbody) return;
+
+            if (sessions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem; color: var(--text-muted);">No study session records found</td></tr>';
+                updateSessionSelectionUI();
+                return;
+            }
+
+            tbody.innerHTML = sessions.map(s => `
+                <tr>
+                    <td class="select-checkbox-col">
+                        <input class="session-select" type="checkbox" value="${s.id}" ${selectedSessionIds.has(s.id) ? 'checked' : ''} aria-label="Select session ${s.id}">
+                    </td>
+                    <td style="font-family: var(--font-mono); color: var(--text-muted);">${s.id}</td>
+                    <td><strong>${s.subject_code}</strong></td>
+                    <td><span class="col-badge">${s.session_type}</span></td>
+                    <td>${s.scheduled_date}</td>
+                    <td style="font-family: var(--font-mono);">${s.scheduled_time}</td>
+                    <td>${s.duration_minutes ? s.duration_minutes + ' min' : '—'}</td>
+                    <td><span style="color: ${s.completed ? '#059669' : 'var(--text-muted)'}; font-weight: 600;">${s.completed ? 'Yes' : 'No'}</span></td>
+                    <td style="text-align: right;">
+                        <button class="action-icon-btn" type="button" title="Edit session" onclick="editSession(${s.id})">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                        </button>
+                        <button class="action-icon-btn delete" type="button" title="Delete session" onclick="deleteSession(${s.id})">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            document.querySelectorAll('.session-select').forEach(input => {
+                input.addEventListener('change', () => {
+                    const id = parseInt(input.value, 10);
+                    if (input.checked) selectedSessionIds.add(id);
+                    else selectedSessionIds.delete(id);
+                    updateSessionSelectionUI();
+                });
+            });
+            updateSessionSelectionUI();
+        }
+
+        function toggleAllSessions(e) {
+            selectedSessionIds.clear();
+            if (e.target.checked) {
+                sessions.forEach(s => selectedSessionIds.add(s.id));
+            }
+            document.querySelectorAll('.session-select').forEach(i => i.checked = e.target.checked);
+            updateSessionSelectionUI();
+        }
+
+        function updateSessionSelectionUI() {
+            const count = selectedSessionIds.size;
+            const countEl = document.getElementById('sessionsSelectedCount');
+            const deleteBtn = document.getElementById('deleteSelectedSessionsBtn');
+            const selectAll = document.getElementById('selectAllSessions');
+            if (countEl) countEl.textContent = `${count} selected`;
+            if (deleteBtn) deleteBtn.disabled = count === 0;
+            if (selectAll) {
+                selectAll.checked = sessions.length > 0 && count === sessions.length;
+                selectAll.indeterminate = count > 0 && count < sessions.length;
+            }
+        }
+
+        async function deleteSelectedSessions() {
+            const ids = Array.from(selectedSessionIds);
+            if (ids.length === 0) return;
+            if (!confirm(`Delete ${ids.length} selected session(s)?`)) return;
+
+            try {
+                const res = await fetch('/api/admin/sessions/batch-delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids })
+                });
+                const result = await parseJsonResponse(res);
+                if (result.success) {
+                    selectedSessionIds.clear();
+                    loadSessions();
+                } else {
+                    alert('Delete failed: ' + result.error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error deleting sessions');
+            }
+        }
+
+        function editSession(sessionId) {
+            const session = sessions.find(s => s.id === sessionId);
+            if (!session) return;
+            document.getElementById('sessionId').value = session.id;
+            document.getElementById('subjectCode').value = session.subject_code;
+            document.getElementById('sessionType').value = session.session_type;
+            document.getElementById('scheduledDate').value = session.scheduled_date;
+            document.getElementById('scheduledTime').value = session.scheduled_time;
+            document.getElementById('durationMinutes').value = session.duration_minutes || '';
+            document.getElementById('completed').checked = session.completed;
+            document.getElementById('notes').value = session.notes || '';
+            document.getElementById('focusAreas').value = session.focus_areas || '';
+            document.getElementById('editModal').classList.add('open');
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').classList.remove('open');
+        }
+
+        async function deleteSession(sessionId) {
+            if (!confirm('Delete this session record?')) return;
+            try {
+                const res = await fetch(`/api/admin/sessions/${sessionId}`, { method: 'DELETE' });
+                const result = await res.json();
+                if (result.success) {
+                    loadSessions();
+                } else {
+                    alert('Failed to delete session: ' + result.error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error deleting session');
+            }
+        }
+
+        // Edit form listener
+        document.getElementById('editForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const sessionData = {
+                subject_code: formData.get('subjectCode'),
+                session_type: formData.get('sessionType'),
+                scheduled_date: formData.get('scheduledDate'),
+                scheduled_time: formData.get('scheduledTime'),
+                duration_minutes: formData.get('durationMinutes') ? parseInt(formData.get('durationMinutes')) : null,
+                completed: formData.get('completed') === 'on',
+                notes: formData.get('notes'),
+                focus_areas: formData.get('focusAreas')
+            };
+            const sessionId = formData.get('sessionId');
+
+            try {
+                const res = await fetch(`/api/admin/sessions/${sessionId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(sessionData)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    closeModal();
+                    loadSessions();
+                } else {
+                    alert('Update failed: ' + result.error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error updating session');
+            }
+        });
+
+        // Tasks
+        async function loadAdminTasks() {
+            try {
+                const res = await fetch('/api/admin/tasks');
+                const result = await res.json();
+                if (result.success) {
+                    tasks = result.tasks;
+                    selectedTaskIds.clear();
+                    renderTasks();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderTasks() {
+            const tbody = document.getElementById('tasksBody');
+            if (!tbody) return;
+
+            if (tasks.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">No free tasks found</td></tr>';
+                updateTaskSelectionUI();
+                return;
+            }
+
+            tbody.innerHTML = tasks.map(t => `
+                <tr>
+                    <td class="select-checkbox-col">
+                        <input class="task-select" type="checkbox" value="${t.id}" ${selectedTaskIds.has(t.id) ? 'checked' : ''} aria-label="Select task ${t.id}">
+                    </td>
+                    <td style="font-family: var(--font-mono); color: var(--text-muted);">${t.id}</td>
+                    <td><strong>${t.title}</strong></td>
+                    <td><span class="col-badge">${t.tag}</span></td>
+                    <td>${t.day}</td>
+                    <td style="font-family: var(--font-mono);">${t.time}</td>
+                    <td style="text-align: right;">
+                        <button class="action-icon-btn delete" type="button" title="Delete task" onclick="deleteTask(${t.id})">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            document.querySelectorAll('.task-select').forEach(input => {
+                input.addEventListener('change', () => {
+                    const id = parseInt(input.value, 10);
+                    if (input.checked) selectedTaskIds.add(id);
+                    else selectedTaskIds.delete(id);
+                    updateTaskSelectionUI();
+                });
+            });
+            updateTaskSelectionUI();
+        }
+
+        function toggleAllTasks(e) {
+            selectedTaskIds.clear();
+            if (e.target.checked) {
+                tasks.forEach(t => selectedTaskIds.add(t.id));
+            }
+            document.querySelectorAll('.task-select').forEach(i => i.checked = e.target.checked);
+            updateTaskSelectionUI();
+        }
+
+        function updateTaskSelectionUI() {
+            const count = selectedTaskIds.size;
+            const countEl = document.getElementById('tasksSelectedCount');
+            const deleteBtn = document.getElementById('deleteSelectedTasksBtn');
+            const selectAll = document.getElementById('selectAllTasks');
+            if (countEl) countEl.textContent = `${count} selected`;
+            if (deleteBtn) deleteBtn.disabled = count === 0;
+            if (selectAll) {
+                selectAll.checked = tasks.length > 0 && count === tasks.length;
+                selectAll.indeterminate = count > 0 && count < tasks.length;
+            }
+        }
+
+        async function deleteTask(taskId) {
+            if (!confirm('Delete this task?')) return;
+            try {
+                const res = await fetch(`/api/admin/tasks/${taskId}`, { method: 'DELETE' });
+                const result = await res.json();
+                if (result.success) {
+                    loadAdminTasks();
+                } else {
+                    alert('Failed to delete task: ' + result.error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error deleting task');
+            }
+        }
+
+        async function deleteSelectedTasks() {
+            const ids = Array.from(selectedTaskIds);
+            if (ids.length === 0) return;
+            if (!confirm(`Delete ${ids.length} selected task(s)?`)) return;
+
+            try {
+                const res = await fetch('/api/admin/tasks/batch-delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids })
+                });
+                const result = await parseJsonResponse(res);
+                if (result.success) {
+                    selectedTaskIds.clear();
+                    loadAdminTasks();
+                } else {
+                    alert('Delete failed: ' + result.error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error deleting tasks');
+            }
+        }
+
+        document.getElementById('adminTaskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('adminTaskTitle').value.trim();
+            const tag = document.getElementById('adminTaskTag').value.trim();
+            const day = document.getElementById('adminTaskDay').value;
+            const time = document.getElementById('adminTaskTime').value;
+
+            try {
+                const res = await fetch('/api/tasks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, tag, day, time })
+                });
+                const result = await res.json();
+                if (res.ok && result.success) {
+                    document.getElementById('adminTaskForm').reset();
+                    loadAdminTasks();
+                } else {
+                    alert('Failed to add task: ' + (result.error || ''));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error adding task');
+            }
+        });
+
+        // Clear DB
+        document.getElementById('clearDbBtn').addEventListener('click', async () => {
+            if (!confirm('WARNING: Are you sure you want to permanently delete ALL study sessions and progress from the database? This cannot be undone.')) {
+                return;
+            }
+            try {
+                const res = await fetch('/api/admin/clear-database', { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    alert('Database cleared successfully.');
+                    loadSessions();
+                    loadAdminTasks();
+                } else {
+                    alert('Failed to clear database: ' + result.error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error clearing database');
+            }
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            loadSessions();
+            loadAdminTasks();
+            loadWeeklyHistory();
+        });
+
+        // ==================== HISTORY PANEL ====================
+        function initializeHistoryPanel() {
+            const input = document.getElementById('historyWeekStart');
+            const today = new Date();
+            const monday = new Date(today);
+            const day = today.getDay();
+            const offset = day === 0 ? -6 : 1 - day;
+            monday.setDate(today.getDate() + offset);
+            input.value = monday.toISOString().slice(0, 10);
+            loadWeeklyHistory();
+        }
+
+        async function loadWeeklyHistory() {
+            const weekStart = document.getElementById('historyWeekStart').value;
+            try {
+                const res = await fetch(`/api/admin/history/weekly?week_start=${encodeURIComponent(weekStart)}`);
+                const result = await parseJsonResponse(res);
+                if (result.success) {
+                    renderWeeklyHistory(result.history);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderWeeklyHistory(history) {
+            const totals = history.totals || {};
+            document.getElementById('academicHistoryTotal').textContent = formatAdminHours(totals.academic_minutes || 0);
+            document.getElementById('freeHistoryTotal').textContent = formatAdminHours(totals.free_minutes || 0);
+            document.getElementById('combinedHistoryTotal').textContent = formatAdminHours(totals.combined_minutes || 0);
+
+            academicHistoryChart = renderHistoryChart(
+                academicHistoryChart,
+                'academicHistoryChart',
+                history.academic_by_subject || [],
+                '#059669'
+            );
+            freeHistoryChart = renderHistoryChart(
+                freeHistoryChart,
+                'freeHistoryChart',
+                history.free_by_tag || [],
+                '#3B82F6'
+            );
+        }
+
+        function renderHistoryChart(instance, canvasId, rows, color) {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return instance;
+            if (instance) instance.destroy();
+
+            const labels = rows.length ? rows.map(r => r.label || 'Unknown') : ['No data'];
+            const values = rows.length ? rows.map(r => Number(((r.total_minutes || 0) / 60).toFixed(2))) : [0];
+
+            return new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: color,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: v => `${v}h` }
+                        },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function formatAdminHours(minutes) {
+            const total = Number(minutes || 0);
+            const hours = Math.floor(total / 60);
+            const mins = total % 60;
+            if (hours && mins) return `${hours}h ${mins}m`;
+            if (hours) return `${hours}h`;
+            return `${mins}m`;
+        }
+
+        async function parseJsonResponse(response) {
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                return response.json();
+            }
+            const text = await response.text();
+            throw new Error(`Request failed with HTTP ${response.status}. ${text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}`);
+        }
+
+        // Close modal on outside click
         window.addEventListener('click', (e) => {
-            const sessionModal = document.getElementById('editModal');
-            if (e.target === sessionModal) {
-                closeModal();
-            }
-            const schedModal = document.getElementById('scheduleBlockModal');
-            if (e.target === schedModal) {
-                closeScheduleModal();
-            }
+            const editM = document.getElementById('editModal');
+            if (e.target === editM) closeModal();
+            const schedM = document.getElementById('scheduleBlockModal');
+            if (e.target === schedM) closeScheduleModal();
         });
     </script>
 </body>
